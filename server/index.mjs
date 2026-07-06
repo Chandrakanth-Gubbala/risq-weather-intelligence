@@ -905,21 +905,22 @@ const PLACE_ALIASES = {
 async function planWeatherDashboardRequest(message, context, conversationState = null, semantic = null) {
   const priorPlan =
     conversationState?.plannerPlan && typeof conversationState.plannerPlan === "object" ? conversationState.plannerPlan : null;
-  if (priorPlan?.pendingFacts?.length) {
+  if (priorPlan?.pendingFacts?.length && !isNewStandaloneQuestionDuringPending(message, priorPlan)) {
     return verifyPlannerPlan(mergePlannerFollowup(priorPlan, message, context), context);
   }
   if (priorPlan && !priorPlan.pendingFacts?.length && isPlannerContinuationMessage(message, priorPlan)) {
     return verifyPlannerPlan(continuePlannerPlan(priorPlan, message), context);
   }
+  const effectiveConversationState = priorPlan?.pendingFacts?.length ? null : conversationState;
   const fallback = verifyPlannerPlan(
-    applyPlannerContextPolicies(applySemanticNormalizationToPlan(localPlannerPlan(message, context, conversationState, semantic), semantic, context), message, context),
+    applyPlannerContextPolicies(applySemanticNormalizationToPlan(localPlannerPlan(message, context, effectiveConversationState, semantic), semantic, context), message, context),
     context
   );
   if (!process.env.OPENAI_API_KEY) return fallback;
   try {
     return verifyPlannerPlan(
       applyPlannerContextPolicies(
-        applySemanticNormalizationToPlan(await callOpenAiDashboardPlanner(message, context, conversationState, semantic), semantic, context),
+        applySemanticNormalizationToPlan(await callOpenAiDashboardPlanner(message, context, effectiveConversationState, semantic), semantic, context),
         message,
         context
       ),
@@ -928,6 +929,29 @@ async function planWeatherDashboardRequest(message, context, conversationState =
   } catch {
     return fallback;
   }
+}
+
+function isNewStandaloneQuestionDuringPending(message, priorPlan) {
+  const text = String(message ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!text) return false;
+  if (looksLikeFollowupSlotAnswer(message, priorPlan)) return false;
+  if (text.includes("?")) return true;
+  return /\b(find|show|explain|compare|rank|where|which|what|weather|forecast|risk|stargaz|outdoor window|delivery|travel|drive|route|should i|can i|do i|will|would)\b/.test(text);
+}
+
+function looksLikeFollowupSlotAnswer(message, priorPlan) {
+  const text = String(message ?? "").toLowerCase().replace(/[^\w\s,:-]/g, " ").replace(/\s+/g, " ").trim();
+  const pending = new Set((Array.isArray(priorPlan?.pendingFacts) ? priorPlan.pendingFacts : []).map(canonicalPendingFact).filter(Boolean));
+  if (!pending.size) return false;
+  if ((pending.has("location") || pending.has("search_scope")) && extractLocation(message)) return true;
+  if ((pending.has("origin") || pending.has("destination")) && extractRouteLocations(message).length >= 2) return true;
+  if (pending.has("time_window") && hasExplicitPlanningWindow(message)) return true;
+  if (pending.has("search_scope")) {
+    if (mentionsMapContext(message) || mentionsSearchScope(message) || searchScopeKey(message)) return true;
+    if (/^(?:u s|us|usa|united states|u s region|us region|usa region|region|area|map|map view|current map|current map view|visible map|visible areas?)$/.test(text)) return true;
+  }
+  if (pending.has("time_window") && /^(?:morning|afternoon|evening|night|tonight|today|tomorrow|this weekend|next weekend|\d{1,2}(?::\d{2})?\s*(?:am|pm)?)$/.test(text)) return true;
+  return false;
 }
 
 async function callOpenAiDashboardPlanner(message, context, conversationState, semantic = null) {
@@ -2441,23 +2465,25 @@ function plannerOutOfScopeResponse(plan) {
 }
 
 function plannerFollowupResponse(message, plan, context) {
-  const question = followupQuestionForPlan(plan) ?? "I can help with that. What missing detail should I use?";
+  const pendingFacts = sanitizePlannerPendingFacts(plan?.pendingFacts, { plan, locations: plan?.locations ?? [], context });
+  const safePlan = { ...plan, pendingFacts };
+  const question = followupQuestionForPlan(safePlan) ?? "I can help with that. What missing detail should I use?";
   return {
     answer: question,
     verdict: "insufficient_data",
     confidence: "high",
     bestWindows: [],
-    risks: plan.pendingFacts.map((fact) => `${fact.replace(/_/g, " ")} is needed before ${assistantName} can answer from the dashboard.`),
+    risks: pendingFacts.map((fact) => `${fact.replace(/_/g, " ")} is needed before ${assistantName} can answer from the dashboard.`),
     dataUsed: ["Planner follow-up"],
     guardrailNote: "Ask for only the missing user-supplied facts needed to answer.",
     actions: [],
     answerType: "needs_followup",
     persona: plan.lens && plan.lens !== "generic" ? plan.lens.replace(/_/g, " ") : "General planning",
-    capabilityNote: `${assistantName} needs ${plan.pendingFacts.map((fact) => fact.replace(/_/g, " ")).join(" and ")} before checking the forecast.`,
-    missingData: plan.pendingFacts,
+    capabilityNote: `${assistantName} needs ${pendingFacts.map((fact) => fact.replace(/_/g, " ")).join(" and ")} before checking the forecast.`,
+    missingData: pendingFacts,
     conversationState: {
-      plannerPlan: plan,
-      pendingFacts: plan.pendingFacts,
+      plannerPlan: safePlan,
+      pendingFacts,
       originalQuestion: message,
       questionFamily: plan.lens ?? null,
       persona: plan.lens ?? null,
