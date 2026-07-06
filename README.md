@@ -1,5 +1,7 @@
 # Climate Risk Monitor
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Chandrakanth-Gubbala/climate-risk-dashboard)
+
 Climate Risk Monitor is an interactive U.S. weather and business-risk dashboard. It combines a Leaflet map, custom canvas heat interpolation, live forecast signals, NOAA/NWS alerts, ranked regions, local detail panels, comparison tools, and a weather-aware assistant named SkyScout.
 
 The project is a prototype, but it is built to be honest about data quality: if a provider fails, the UI degrades visibly instead of inventing weather values.
@@ -147,4 +149,3 @@ climate-risk-dashboard/
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data Sources](docs/DATA_SOURCES.md)
 - [Deployment](docs/DEPLOYMENT.md)
-
