@@ -4977,7 +4977,8 @@ async function callOpenAiAssistant(message, advisory, interpretation, evidence) 
   const raw = await response.json().catch(() => null);
   if (!response.ok) throw new Error(raw?.error?.message ?? `OpenAI HTTP ${response.status}`);
   const parsed = parseOpenAiJson(raw);
-  return sanitizeAssistantResponse(parsed, advisory);
+  const sanitized = sanitizeAssistantResponse(parsed, advisory);
+  return isHomeCoolingResponseContext(interpretation, advisory, evidence) ? enforceHomeCoolingGuardrail(sanitized, advisory) : sanitized;
 }
 
 function assistantSchema() {
@@ -5056,6 +5057,34 @@ function sanitizeAssistantResponse(parsed, fallback) {
     capabilityNote: fallback.capabilityNote,
     missingData: fallback.missingData ?? [],
     conversationState: fallback.conversationState ?? null
+  };
+}
+
+function isHomeCoolingResponseContext(interpretation, advisory, evidence) {
+  const text = [
+    interpretation?.activity,
+    interpretation?.businessObjective,
+    interpretation?.userFriendlyGoal,
+    advisory?.facts?.interpretation?.activity,
+    advisory?.facts?.interpretation?.businessObjective,
+    evidence?.capability?.applicationReasoning?.applicationKind,
+    evidence?.applicationReasoning?.applicationKind
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /\b(home cooling|home_cooling|home_hvac|thermostat|hvac|air conditioning|a\/c|ac)\b/.test(text);
+}
+
+function enforceHomeCoolingGuardrail(response, fallback) {
+  return {
+    ...response,
+    answer: fallback.answer,
+    bestWindows: [],
+    risks: Array.isArray(fallback.risks) ? fallback.risks : response.risks,
+    dataUsed: Array.isArray(fallback.dataUsed) ? fallback.dataUsed : response.dataUsed,
+    guardrailNote:
+      "Home cooling guidance is weather-only. Exact setpoints, energy savings, bills, HVAC performance, and indoor comfort guarantees are not inferred."
   };
 }
 
