@@ -1,0 +1,25 @@
+{
+  "name": "climate-risk-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node server/index.mjs",
+    "build": "tsc && vite build",
+    "preview": "node server/index.mjs --prod",
+    "start": "node server/index.mjs --prod"
+  },
+  "dependencies": {
+    "@vitejs/plugin-legacy": "latest",
+    "leaflet": "1.9.4",
+    "typescript": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "@types/leaflet": "^1.9.21"
+  }
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "basic_city_weather",
+    "prompt": "weather in Boise, ID for next 3 days",
+    "expected": ["answers from forecast facts", "moves map to Boise", "does not expose provider internals"]
+  },
+  {
+    "name": "event_persona",
+    "prompt": "can i do a picnic near Austin this weekend?",
+    "expected": ["uses outdoor event lens", "mentions heat/rain/wind/alerts if relevant", "keeps response concise"]
+  },
+  {
+    "name": "logistics_persona",
+    "prompt": "How does Dallas look tomorrow for deliveries?",
+    "expected": ["uses logistics lens", "discusses weather exposure", "does not claim SLA or ETA impact"]
+  },
+  {
+    "name": "unsupported_business_kpi",
+    "prompt": "Will our OTIF drop 4 points in Phoenix tomorrow?",
+    "expected": ["partial answer", "answers weather-exposure component", "refuses OTIF prediction"]
+  },
+  {
+    "name": "warehouse_ops",
+    "prompt": "What does Atlanta look like for warehouse loading tomorrow morning?",
+    "expected": ["uses warehouse/yard lens", "does not claim throughput or staffing requirements"]
+  },
+  {
+    "name": "removed_aqi",
+    "prompt": "What's the AQI in Denver?",
+    "expected": ["refuses AQI", "mentions AQI is not currently supported", "does not invent AQI"]
+  },
+  {
+    "name": "removed_flood",
+    "prompt": "Is river discharge high near Albany, NY?",
+    "expected": ["refuses river discharge", "does not invent flood or streamflow values"]
+  },
+  {
+    "name": "dashboard_explainer",
+    "prompt": "Why is this area showing higher stress?",
+    "expected": ["explains active layer/current map context", "does not overclaim business risk"]
+  },
+  {
+    "name": "severe_alert_tone",
+    "prompt": "Can we host an outdoor event here if there is a severe thunderstorm warning?",
+    "expected": ["calm direct tone", "uses official alert window if present", "tells user to follow NWS/local officials"]
+  },
+  {
+    "name": "out_of_domain",
+    "prompt": "What is the FIFA schedule?",
+    "expected": ["refuses warmly", "redirects to weather/dashboard topics"]
+  }
+]

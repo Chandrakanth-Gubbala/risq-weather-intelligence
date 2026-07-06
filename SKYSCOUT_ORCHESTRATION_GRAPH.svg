@@ -1,0 +1,242 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1080" viewBox="0 0 1800 1080" role="img" aria-labelledby="title desc">
+  <title id="title">SkyScout Weather Assistant Orchestration Graph</title>
+  <desc id="desc">A visual orchestration graph showing user message, semantic gate, scope handling, evidence classification, data availability, deterministic data operations, verified evidence, final response writing, sanitizer, and frontend rendering.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#243447"/>
+    </marker>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 34px Arial, sans-serif; fill: #17212f; }
+      .subtitle { font: 400 17px Arial, sans-serif; fill: #526173; }
+      .phaseTitle { font: 700 16px Arial, sans-serif; fill: #17212f; }
+      .boxTitle { font: 700 15px Arial, sans-serif; fill: #17212f; }
+      .boxText { font: 400 13px Arial, sans-serif; fill: #314056; }
+      .small { font: 400 12px Arial, sans-serif; fill: #526173; }
+      .arrow { stroke: #243447; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .softArrow { stroke: #6a7788; stroke-width: 1.8; fill: none; stroke-dasharray: 7 6; marker-end: url(#arrow); }
+      .phase { rx: 18; fill: #ffffff; stroke-width: 2; }
+      .node { rx: 12; stroke-width: 1.8; }
+      .decision { fill: #fff3bf; stroke: #d79b00; stroke-width: 2; }
+      .input { fill: #dff0ff; stroke: #3d9be9; }
+      .llm { fill: #eadfff; stroke: #845ef7; }
+      .scope { fill: #ffe3ec; stroke: #e64980; }
+      .evidence { fill: #ddf9f4; stroke: #12b886; }
+      .gate { fill: #fff0db; stroke: #f08c00; }
+      .det { fill: #dcfce7; stroke: #2f9e44; }
+      .writer { fill: #fff4e6; stroke: #f76707; }
+      .guard { fill: #f1f3f5; stroke: #868e96; }
+      .bad { fill: #ffe3e3; stroke: #fa5252; }
+      .good { fill: #d3f9d8; stroke: #37b24d; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1080"/>
+  <text class="title" x="72" y="62">SkyScout Weather Assistant Orchestration</text>
+  <text class="subtitle" x="72" y="92">Flexible with human language, strict with verified dashboard facts.</text>
+
+  <!-- Phase containers -->
+  <rect class="phase" x="60" y="130" width="230" height="760" stroke="#3d9be9"/>
+  <text class="phaseTitle" x="84" y="160">Inputs</text>
+
+  <rect class="phase" x="330" y="130" width="260" height="760" stroke="#845ef7"/>
+  <text class="phaseTitle" x="354" y="160">SkyScout Semantic Gate</text>
+
+  <rect class="phase" x="630" y="130" width="250" height="760" stroke="#12b886"/>
+  <text class="phaseTitle" x="654" y="160">Evidence Reasoning</text>
+
+  <rect class="phase" x="920" y="130" width="250" height="760" stroke="#f08c00"/>
+  <text class="phaseTitle" x="944" y="160">Capability Gate</text>
+
+  <rect class="phase" x="1210" y="130" width="250" height="760" stroke="#2f9e44"/>
+  <text class="phaseTitle" x="1234" y="160">Deterministic Layer</text>
+
+  <rect class="phase" x="1500" y="130" width="240" height="760" stroke="#f76707"/>
+  <text class="phaseTitle" x="1524" y="160">Final Response</text>
+
+  <!-- Inputs -->
+  <rect class="node input" x="92" y="205" width="166" height="72"/>
+  <text class="boxTitle" x="112" y="233">User Message</text>
+  <text class="boxText" x="112" y="253">Raw question</text>
+
+  <rect class="node input" x="92" y="315" width="166" height="88"/>
+  <text class="boxTitle" x="112" y="342">Session Memory</text>
+  <text class="boxText" x="112" y="363">Prior route, place,</text>
+  <text class="boxText" x="112" y="381">activity, pending slots</text>
+
+  <rect class="node input" x="92" y="445" width="166" height="88"/>
+  <text class="boxTitle" x="112" y="472">Dashboard Context</text>
+  <text class="boxText" x="112" y="493">Map, selected area,</text>
+  <text class="boxText" x="112" y="511">visible regions, alerts</text>
+
+  <rect class="node input" x="92" y="575" width="166" height="88"/>
+  <text class="boxTitle" x="112" y="602">Data Manifest</text>
+  <text class="boxText" x="112" y="623">What weather facts</text>
+  <text class="boxText" x="112" y="641">exist or do not exist</text>
+
+  <rect class="node input" x="92" y="705" width="166" height="88"/>
+  <text class="boxTitle" x="112" y="732">SkyScout Persona</text>
+  <text class="boxText" x="112" y="753">Warm, practical,</text>
+  <text class="boxText" x="112" y="771">safety-aware voice</text>
+
+  <!-- Semantic Gate -->
+  <rect class="node llm" x="372" y="195" width="176" height="92"/>
+  <text class="boxTitle" x="392" y="222">Normalize Query</text>
+  <text class="boxText" x="392" y="243">Fix spelling, parse</text>
+  <text class="boxText" x="392" y="261">location, time, activity</text>
+
+  <polygon class="decision" points="460,330 548,385 460,440 372,385"/>
+  <text class="boxTitle" x="419" y="381">Scope</text>
+  <text class="boxTitle" x="418" y="399">Class?</text>
+
+  <rect class="node scope" x="372" y="490" width="176" height="74"/>
+  <text class="boxTitle" x="392" y="518">Application</text>
+  <text class="boxTitle" x="392" y="537">Reasoner</text>
+
+  <rect class="node llm" x="372" y="615" width="176" height="94"/>
+  <text class="boxTitle" x="392" y="642">Evidence Need</text>
+  <text class="boxText" x="392" y="663">What facts are</text>
+  <text class="boxText" x="392" y="681">needed to answer?</text>
+
+  <rect class="node bad" x="372" y="755" width="176" height="76"/>
+  <text class="boxTitle" x="392" y="782">Out of Scope</text>
+  <text class="boxText" x="392" y="803">Polite redirect</text>
+
+  <!-- Evidence Reasoning -->
+  <rect class="node evidence" x="670" y="205" width="170" height="82"/>
+  <text class="boxTitle" x="690" y="233">Classify Missing</text>
+  <text class="boxText" x="690" y="254">Split all required</text>
+  <text class="boxText" x="690" y="272">information</text>
+
+  <rect class="node evidence" x="670" y="330" width="170" height="88"/>
+  <text class="boxTitle" x="690" y="358">User Context</text>
+  <text class="boxText" x="690" y="379">Date, region, route,</text>
+  <text class="boxText" x="690" y="397">time, preferences</text>
+
+  <rect class="node evidence" x="670" y="460" width="170" height="88"/>
+  <text class="boxTitle" x="690" y="488">Dashboard Facts</text>
+  <text class="boxText" x="690" y="509">Cloud, wind, heat,</text>
+  <text class="boxText" x="690" y="527">humidity, fire, alerts</text>
+
+  <rect class="node evidence" x="670" y="590" width="170" height="96"/>
+  <text class="boxTitle" x="690" y="618">External Facts</text>
+  <text class="boxText" x="690" y="639">Traffic, tracking,</text>
+  <text class="boxText" x="690" y="657">moon phase, light</text>
+  <text class="boxText" x="690" y="675">pollution, radar</text>
+
+  <!-- Capability Gate -->
+  <polygon class="decision" points="1045,250 1130,305 1045,360 960,305"/>
+  <text class="boxTitle" x="1003" y="301">Need User</text>
+  <text class="boxTitle" x="1013" y="319">Context?</text>
+
+  <rect class="node gate" x="960" y="405" width="170" height="82"/>
+  <text class="boxTitle" x="980" y="433">Ask Follow-up</text>
+  <text class="boxText" x="980" y="454">One natural</text>
+  <text class="boxText" x="980" y="472">question only</text>
+
+  <polygon class="decision" points="1045,555 1130,610 1045,665 960,610"/>
+  <text class="boxTitle" x="1002" y="607">Weather Data</text>
+  <text class="boxTitle" x="1015" y="625">Exists?</text>
+
+  <polygon class="decision" points="1045,735 1130,790 1045,845 960,790"/>
+  <text class="boxTitle" x="1005" y="786">Answerable</text>
+  <text class="boxTitle" x="1020" y="804">Enough?</text>
+
+  <rect class="node bad" x="960" y="900" width="170" height="72"/>
+  <text class="boxTitle" x="980" y="928">Insufficient</text>
+  <text class="boxText" x="980" y="949">Say what is missing</text>
+
+  <!-- Deterministic Layer -->
+  <rect class="node det" x="1248" y="205" width="174" height="86"/>
+  <text class="boxTitle" x="1268" y="233">Choose Operation</text>
+  <text class="boxText" x="1268" y="254">Location, route,</text>
+  <text class="boxText" x="1268" y="272">ranking, time window</text>
+
+  <rect class="node det" x="1248" y="340" width="174" height="96"/>
+  <text class="boxTitle" x="1268" y="368">Pull Data</text>
+  <text class="boxText" x="1268" y="389">Fetch or read</text>
+  <text class="boxText" x="1268" y="407">verified weather facts</text>
+
+  <rect class="node det" x="1248" y="490" width="174" height="118"/>
+  <text class="boxTitle" x="1268" y="518">Verified Evidence</text>
+  <text class="boxText" x="1268" y="539">Facts, allowed claims,</text>
+  <text class="boxText" x="1268" y="557">forbidden claims,</text>
+  <text class="boxText" x="1268" y="575">missing data, actions</text>
+
+  <rect class="node det" x="1248" y="665" width="174" height="100"/>
+  <text class="boxTitle" x="1268" y="693">Examples</text>
+  <text class="boxText" x="1268" y="714">Stargazing: cloud,</text>
+  <text class="boxText" x="1268" y="732">rain, wind, alerts</text>
+
+  <!-- Final Response -->
+  <rect class="node writer" x="1532" y="205" width="176" height="104"/>
+  <text class="boxTitle" x="1552" y="233">SkyScout Writer</text>
+  <text class="boxText" x="1552" y="254">Warm, concise,</text>
+  <text class="boxText" x="1552" y="272">practical answer from</text>
+  <text class="boxText" x="1552" y="290">verified evidence</text>
+
+  <rect class="node guard" x="1532" y="370" width="176" height="100"/>
+  <text class="boxTitle" x="1552" y="398">Sanitizer</text>
+  <text class="boxText" x="1552" y="419">No invented facts,</text>
+  <text class="boxText" x="1552" y="437">preserve guardrails</text>
+  <text class="boxText" x="1552" y="455">and memory</text>
+
+  <rect class="node writer" x="1532" y="535" width="176" height="88"/>
+  <text class="boxTitle" x="1552" y="563">Render Answer</text>
+  <text class="boxText" x="1552" y="584">Text, verdict, risks,</text>
+  <text class="boxText" x="1552" y="602">map movement</text>
+
+  <rect class="node good" x="1532" y="690" width="176" height="88"/>
+  <text class="boxTitle" x="1552" y="718">Update Memory</text>
+  <text class="boxText" x="1552" y="739">Store current plan</text>
+  <text class="boxText" x="1552" y="757">for follow-ups</text>
+
+  <!-- Arrows -->
+  <path class="arrow" d="M258 241 C305 241, 325 241, 372 241"/>
+  <path class="softArrow" d="M258 359 C310 340, 320 285, 372 260"/>
+  <path class="softArrow" d="M258 489 C310 470, 320 400, 372 385"/>
+  <path class="softArrow" d="M258 619 C310 600, 320 500, 372 520"/>
+  <path class="softArrow" d="M258 749 C310 730, 320 585, 372 660"/>
+
+  <path class="arrow" d="M460 287 L460 330"/>
+  <path class="arrow" d="M460 440 L460 490"/>
+  <path class="arrow" d="M460 564 L460 615"/>
+  <path class="arrow" d="M548 385 C595 385, 620 235, 670 235"/>
+  <path class="softArrow" d="M460 440 C520 500, 560 745, 372 793"/>
+
+  <path class="arrow" d="M548 662 C590 662, 625 246, 670 246"/>
+  <path class="arrow" d="M755 287 L755 330"/>
+  <path class="arrow" d="M755 418 L755 460"/>
+  <path class="arrow" d="M755 548 L755 590"/>
+
+  <path class="arrow" d="M840 374 C895 374, 915 305, 960 305"/>
+  <path class="arrow" d="M1130 305 C1160 305, 1170 248, 1248 248"/>
+  <path class="arrow" d="M1045 360 L1045 405"/>
+  <path class="softArrow" d="M960 446 C730 446, 685 100, 175 205"/>
+  <path class="arrow" d="M840 504 C900 504, 920 610, 960 610"/>
+  <path class="arrow" d="M1130 610 C1160 610, 1170 383, 1248 383"/>
+  <path class="arrow" d="M1045 665 L1045 735"/>
+  <path class="arrow" d="M1130 790 C1170 790, 1190 550, 1248 550"/>
+  <path class="arrow" d="M1045 845 L1045 900"/>
+
+  <path class="arrow" d="M1422 248 C1460 248, 1490 257, 1532 257"/>
+  <path class="arrow" d="M1335 291 L1335 340"/>
+  <path class="arrow" d="M1335 436 L1335 490"/>
+  <path class="arrow" d="M1422 550 C1465 550, 1485 257, 1532 257"/>
+  <path class="softArrow" d="M1130 936 C1330 936, 1450 257, 1532 257"/>
+  <path class="arrow" d="M1620 309 L1620 370"/>
+  <path class="arrow" d="M1620 470 L1620 535"/>
+  <path class="arrow" d="M1620 623 L1620 690"/>
+  <path class="softArrow" d="M1532 734 C1180 1020, 420 1015, 175 359"/>
+
+  <!-- Legend -->
+  <rect x="70" y="930" width="650" height="98" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+  <text class="boxTitle" x="94" y="958">Core principle</text>
+  <text class="boxText" x="94" y="982">SkyScout can be flexible with messy human language, but the deterministic layer decides what data exists.</text>
+  <text class="boxText" x="94" y="1004">The final LLM writes only from verified facts and clearly names missing user context or unavailable external data.</text>
+
+  <rect x="760" y="930" width="510" height="98" rx="14" fill="#ffffff" stroke="#d0d7de"/>
+  <text class="boxTitle" x="784" y="958">Stargazing example</text>
+  <text class="boxText" x="784" y="982">Dashboard facts: cloud cover, rain, wind, alerts.</text>
+  <text class="boxText" x="784" y="1004">User context: preferred region and date/window. External: light pollution, moon phase.</text>
+</svg>
