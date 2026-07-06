@@ -147,7 +147,7 @@ async function handleAssistantChat(body) {
   const message = String(body?.message ?? "").trim().slice(0, 1200);
   if (!message) throw new Error("Invalid chat message");
   const context = body?.context && typeof body.context === "object" ? body.context : {};
-  const pending = sanitizeConversationState(context?.conversationState);
+  const pending = sanitizeConversationState(body?.conversationState ?? context?.conversationState);
   if (isGreetingMessage(message)) return conversationalResponse(greetingApplicationPlan());
   const alertExplanation = alertExplanationResponse(message, context);
   if (alertExplanation) return alertExplanation;
@@ -159,7 +159,7 @@ async function handleAssistantChat(body) {
   const hasPendingPlannerFollowup = Boolean(pending?.plannerPlan?.pendingFacts?.length);
   const planningMessage = normalizedMessageForPlanning(message, semantic);
   if (!hasPendingPlannerFollowup && isSemanticOutOfScope(semantic, planningMessage, context)) return semanticOutOfScopeResponse(semantic);
-  const plannerPlan = await planWeatherDashboardRequest(planningMessage, context, pending, semantic);
+  const plannerPlan = await planWeatherDashboardRequest(hasPendingPlannerFollowup ? message : planningMessage, context, pending, semantic);
   if (plannerPlan.domain === "not_weather_related") return plannerOutOfScopeResponse(plannerPlan);
   if (plannerPlan.pendingFacts.length) return plannerFollowupResponse(message, plannerPlan, context);
 
@@ -1411,7 +1411,11 @@ function localPlannerPlan(message, context, conversationState = null, semantic =
 
 function mergePlannerFollowup(priorPlan, message, context) {
   const plan = { ...priorPlan, locations: Array.isArray(priorPlan.locations) ? [...priorPlan.locations] : [] };
-  const pending = new Set(Array.isArray(priorPlan.pendingFacts) ? priorPlan.pendingFacts : []);
+  const pending = new Set(
+    (Array.isArray(priorPlan.pendingFacts) ? priorPlan.pendingFacts : [])
+      .map(canonicalPendingFact)
+      .filter(Boolean)
+  );
   const location = extractLocation(message);
   const routeLocations = extractRouteLocations(message);
   const window = hasExplicitPlanningWindow(message) ? plannerTimeWindowFromMessage(message) : { type: "none", value: "" };
@@ -1442,18 +1446,35 @@ function mergePlannerFollowup(priorPlan, message, context) {
       plan.shouldGeocode = true;
       plan.geocodeQueries = [location];
       plan.retrievalMode = "single_location";
+      pending.delete("search_scope");
+    } else if (isAmbiguousSearchScopeFollowup(message)) {
+      plan.locations = [];
+      plan.shouldGeocode = false;
+      plan.geocodeQueries = [];
+      plan.retrievalMode = "ask_followup";
     } else {
       plan.locations = [];
       plan.shouldGeocode = false;
       plan.geocodeQueries = [];
       plan.retrievalMode = "rank_visible_points";
+      pending.delete("search_scope");
     }
-    pending.delete("search_scope");
   }
   if (!plan.locations?.length && context?.selected) plan.locations = [{ raw: "context", role: "context" }];
   plan.pendingFacts = [...pending].slice(0, 2);
-  plan.expectedAnswerMode = plan.pendingFacts.length ? "ask_followup" : plan.expectedAnswerMode;
+  plan.expectedAnswerMode = plan.pendingFacts.length
+    ? "ask_followup"
+    : plan.expectedAnswerMode === "ask_followup"
+      ? "answer_from_dashboard"
+      : plan.expectedAnswerMode;
   return plan;
+}
+
+function isAmbiguousSearchScopeFollowup(message) {
+  const text = String(message ?? "").toLowerCase().replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return true;
+  if (/^(?:u\s*s|us|united states|usa|u s region|us region|usa region|u s area|us area|region|area|any region|a region|some region)$/.test(text)) return true;
+  return /\b(?:u\s*s|us|usa|united states)\s+region\b/.test(text) && !searchScopeKey(text);
 }
 
 function isPlannerContinuationMessage(message, priorPlan) {
