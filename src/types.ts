@@ -129,18 +129,7 @@ export type AssistantAction = {
   label: string;
 };
 
-export type AssistantConversationState = {
-  pendingSlot?: "delivery_time_window" | null;
-  questionFamily?: string | null;
-  originalQuestion?: string | null;
-  locationLabel?: string | null;
-  lat?: number | null;
-  lon?: number | null;
-  persona?: string | null;
-  businessObjective?: string | null;
-  plannerPlan?: unknown;
-  pendingFacts?: string[];
-};
+export type AssistantConversationState = { sessionId?: string } & Record<string, unknown>;
 
 export type AssistantResponse = {
   answer: string;

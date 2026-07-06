@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node server/index.mjs",
     "build": "tsc && vite build",
+    "test:assistant": "node --test server/assistant/tests/*.test.mjs",
     "preview": "node server/index.mjs --prod",
     "start": "node server/index.mjs --prod"
   },
