@@ -538,7 +538,7 @@ async function callOpenAiSemanticNormalizer(message, context, conversationState)
         {
           role: "developer",
           content:
-            "You are the SemanticNormalizer for SkyScout, a bounded U.S. weather dashboard assistant. Clean messy user language into structured fields only. Do not answer. Do not fetch. Do not invent weather. Your normalizedQuestion must be a corrected, planner-ready rewrite of the user's weather/dashboard intent: fix spelling, split run-together terms, expand obvious shorthand, and use canonical dashboard vocabulary. Examples: hte -> the, firerisk/fire-risk -> fire risk, nyc -> New York, NY, niagra -> Niagara, delviery -> delivery, stargaze/stars -> stargazing. First decide whether the message is weather/dashboard/weather-impact related. Use intent out_of_scope only for general news, coding, recipes, finance, entertainment, medical/legal advice, or anything that cannot be reframed as a weather-impact/dashboard question. Correct obvious spelling mistakes in locations and activities, but preserve ambiguity by returning confidence below 0.75 when uncertain. Separate locations from surrounding sentence text; activities like stargazing, food delivery, repairs, travel, and clothing are not locations. Map dashboard-layer requests to one of: risk, fire, heat, temp, wind, humidity, cloud, cdd. For home repairs, exterior work, roofing, painting, ladders, construction, and field work, use an outdoor-work intent. Output JSON only."
+            "You are the SemanticNormalizer for SkyScout, a bounded U.S. weather dashboard assistant. Clean messy user language into structured fields only. Do not answer. Do not fetch. Do not invent weather. Your normalizedQuestion must be a corrected, planner-ready rewrite of the user's weather/dashboard intent: fix spelling, split run-together terms, expand obvious shorthand, and use canonical dashboard vocabulary. Examples: hte -> the, firerisk/fire-risk -> fire risk, nyc -> New York, NY, niagra -> Niagara, delviery -> delivery, stargaze/stars -> stargazing. First decide whether the message is weather/dashboard/weather-impact related. Use intent out_of_scope only for general news, coding, recipes, finance, entertainment, medical/legal advice, or anything that cannot be reframed as a weather-impact/dashboard question. Correct obvious spelling mistakes in locations and activities, but preserve ambiguity by returning confidence below 0.75 when uncertain. Separate locations from surrounding sentence text; activities like stargazing, food delivery, repairs, travel, and clothing are not locations. For AC, air conditioning, thermostat, HVAC, or home cooling questions, use a home-cooling intent, not outdoor work. Map dashboard-layer requests to one of: risk, fire, heat, temp, wind, humidity, cloud, cdd. For home repairs, exterior work, roofing, painting, ladders, construction, and field work, use an outdoor-work intent. Output JSON only."
         },
         {
           role: "user",
@@ -635,7 +635,9 @@ function localSemanticNormalization(message, context = {}, conversationState = n
   const intent =
     scope === "out_of_scope" && !requestedLayer
       ? "out_of_scope"
-      : /\b(repair|repairs|fix|paint|painting|roof|roofing|siding|gutter|ladder|exterior|outside of my house|house)\b/.test(lower)
+      : /\b(ac|a\/c|air\s*condition(?:er|ing)?|thermostat|hvac|cooling|cooler)\b/.test(lower)
+      ? "home_cooling"
+      : /\b(repair|repairs|fix|paint|painting|roof|roofing|siding|gutter|ladder|exterior|outside of my house)\b/.test(lower)
       ? "outdoor_work"
       : requestedLayer && /\b(explain|why|area|risk|score|layer)\b/.test(lower)
         ? "dashboard_explainer"
@@ -643,7 +645,9 @@ function localSemanticNormalization(message, context = {}, conversationState = n
           ? "dashboard_layer_query"
           : "generic_weather";
   const activity =
-    intent === "outdoor_work"
+    intent === "home_cooling"
+      ? "home cooling"
+      : intent === "outdoor_work"
       ? "exterior home repair"
       : /\bstargaz|star[-\s]?gaz|\bstars?\b|\bnight\s+sky\b/.test(lower)
         ? "stargazing"
@@ -684,7 +688,7 @@ function semanticLocation(raw, role) {
 
 function sanitizeSemanticNormalization(raw, fallback = null) {
   const base = fallback && typeof fallback === "object" ? fallback : {};
-  const locations = Array.isArray(raw?.locations)
+  const cleanedLocations = Array.isArray(raw?.locations)
     ? raw.locations
         .filter((loc) => loc && typeof loc === "object")
         .map((loc) => ({
@@ -695,7 +699,8 @@ function sanitizeSemanticNormalization(raw, fallback = null) {
         }))
         .filter((loc) => loc.normalized && !isBadLocationCandidate(loc.normalized))
         .slice(0, 4)
-    : base.locations ?? [];
+    : [];
+  const locations = cleanedLocations.length ? cleanedLocations : base.locations ?? [];
   const requestedLayer = normalizeLayerId(raw?.requestedLayer) ?? normalizeLayerId(base.requestedLayer);
   const normalizedQuestion = stringOr(raw?.normalizedQuestion, base.normalizedQuestion ?? "", 500);
   return {
@@ -754,7 +759,8 @@ function applySemanticNormalizationToPlan(plan, semantic, context = {}) {
 
 function buildNormalizedQuestion(message, location, intent, activity, requestedLayer) {
   const bits = [];
-  if (intent === "outdoor_work") bits.push("Assess outdoor repair work from weather");
+  if (intent === "home_cooling") bits.push("Assess home cooling demand from weather");
+  else if (intent === "outdoor_work") bits.push("Assess outdoor repair work from weather");
   else if (intent === "dashboard_explainer") bits.push("Explain the dashboard risk");
   else if (requestedLayer) bits.push(`Use the ${requestedLayer} dashboard layer`);
   if (activity) bits.push(`activity: ${activity}`);
@@ -1092,7 +1098,7 @@ function verifyPlannerPlan(raw, context = {}) {
   const domain = ["weather_related", "not_weather_related", "ambiguous"].includes(plan.domain) ? plan.domain : "ambiguous";
   const locations = sanitizePlannerLocations(plan.locations);
   let retrievalMode = manifestRetrievalModes.has(plan.retrievalMode) ? plan.retrievalMode : inferRetrievalMode(plan, locations, hasContextLocation);
-  const pendingFacts = sanitizeStringList(plan.pendingFacts, [], 2, 60);
+  const pendingFacts = sanitizePlannerPendingFacts(plan.pendingFacts, { plan, locations, context });
   if (pendingFacts.length) retrievalMode = "ask_followup";
   const verified = {
     domain,
@@ -1236,6 +1242,38 @@ function sanitizePlannerLocations(value) {
 function sanitizePlannerTimeWindow(value) {
   const type = ["none", "now", "day", "range", "hour"].includes(value?.type) ? value.type : "none";
   return { type, value: typeof value?.value === "string" ? value.value.trim().slice(0, 80) : "" };
+}
+
+function sanitizePlannerPendingFacts(value, { plan = {}, locations = [], context = {} } = {}) {
+  const raw = sanitizeStringList(value, [], 6, 120);
+  const hasExplicitLocation = locations.some((loc) => loc?.raw && loc.raw !== "context") || Boolean(context?.selected);
+  const hasRouteOrigin = locations.some((loc) => loc?.role === "origin");
+  const hasRouteDestination = locations.some((loc) => loc?.role === "destination");
+  const timeWindow = sanitizePlannerTimeWindow(plan?.timeWindow);
+  const hasUsableTime = timeWindow.type !== "none" && Boolean(timeWindow.value);
+  const slots = [];
+  for (const item of raw) {
+    const slot = canonicalPendingFact(item);
+    if (!slot) continue;
+    if (slot === "location" && hasExplicitLocation) continue;
+    if (slot === "origin" && hasRouteOrigin) continue;
+    if (slot === "destination" && hasRouteDestination) continue;
+    if (slot === "time_window" && hasUsableTime) continue;
+    if (!slots.includes(slot)) slots.push(slot);
+  }
+  return slots.slice(0, 2);
+}
+
+function canonicalPendingFact(value) {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (!text) return null;
+  if (/forecast|temperature|temp|humidity|wind|precip|rain|cloud|alert|value|values|data|metric|weather\s+facts?/.test(text)) return null;
+  if (/search|scope|region|area preference|map view|visible/.test(text)) return "search_scope";
+  if (/origin|start(?:ing)? point|from\b/.test(text)) return "origin";
+  if (/destination|endpoint|to\b/.test(text)) return "destination";
+  if (/time|window|when|hour|morning|afternoon|evening|tonight|tomorrow|today|date|day/.test(text)) return "time_window";
+  if (/location|city|state|place|address|where|map context|selected map/.test(text)) return "location";
+  return null;
 }
 
 function sanitizePlannerFacts(value, locationCount) {
@@ -1452,6 +1490,7 @@ function inferPlannerLens(text) {
   if (/\b(delivery|deliver|courier)\b/.test(text)) return "delivery";
   if (/\b(stargaz(?:e|ing)?|star[-\s]?gaz(?:e|ing)?|sky[-\s]?watch(?:ing)?|watch(?:ing)?\s+(?:the\s+)?stars?|meteor|night\s+sky|telescope)\b/.test(text)) return "stargazing";
   if (/\b(wear|clothing|clothes|dress|outfit|jacket|coat|sweater|hoodie|shorts|pants|umbrella|raincoat)\b/.test(text)) return "clothing";
+  if (/\b(ac|a\/c|air\s*condition(?:er|ing)?|thermostat|hvac|cooling|cooler|cool\s+my\s+house|cool\s+my\s+home)\b/.test(text)) return "home_cooling";
   if (/\b(travel|drive|driving|road\s*trip|commute|trip|flight|fly)\b/.test(text)) return "travel";
   if (/\b(picnic|event|concert|festival|wedding|park|outdoor)\b/.test(text)) return "event";
   if (/\b(repair|repairs|fix|paint|painting|roof|roofing|siding|gutter|ladder|exterior|construction|crane|paving|jobsite|crew|technician|field service)\b/.test(text)) return "outdoor_work";
@@ -1462,6 +1501,7 @@ function inferPlannerActivity(text) {
   if (/\bstargaz|star[-\s]?gaz|\bsky[-\s]?watch|\bstars?\b|\bmeteor\b|\bnight\s+sky\b|\btelescope\b/.test(text)) return "stargazing";
   if (/\bdelivery|deliver|package|parcel|shipment|food order|takeout/.test(text)) return "delivery";
   if (/\bwear|clothing|clothes|outfit|jacket|umbrella/.test(text)) return "clothing";
+  if (/\b(ac|a\/c|air\s*condition(?:er|ing)?|thermostat|hvac|cooling)\b/.test(text)) return "home cooling";
   if (/\btravel|drive|trip|commute|flight/.test(text)) return "travel";
   if (/\bpicnic|event|concert|festival|wedding|park|outdoor/.test(text)) return "outdoor_event";
   return null;
@@ -1471,6 +1511,7 @@ function localPlannerGoal(message, lens, retrievalMode) {
   if (retrievalMode === "rank_visible_points") return `Find the best visible map area for ${lens === "generic" ? "the user's weather-sensitive goal" : lens}.`;
   if (lens.includes("delivery")) return "Assess weather-related delivery disruption risk.";
   if (lens === "clothing") return "Choose practical clothing from forecast weather.";
+  if (lens === "home_cooling") return "Assess weather-related home cooling demand and thermostat tradeoffs.";
   if (lens === "stargazing") return "Screen stargazing conditions from cloud cover, rain, wind, and alerts.";
   if (lens === "outdoor_work" || lens === "home_repair") return "Assess whether weather is suitable for exterior work from rain, wind, heat, humidity, and alerts.";
   return `Answer the weather-related question: ${String(message).slice(0, 160)}`;
@@ -1527,7 +1568,10 @@ function localRequiredFacts(lens, retrievalMode, locationCount) {
     return facts;
   }
   if (lens === "clothing") ["temp_max", "temp_min", "apparent_temp", "precip_sum", "wind_speed", "humidity", "alerts_active"].forEach(perLoc);
-  else if (["outdoor_work", "home_repair", "field_work", "construction"].includes(lens)) ["temp_max", "apparent_temp", "precip_sum", "wind_speed", "humidity", "alerts_active"].forEach(perLoc);
+  else if (lens === "home_cooling") {
+    ["temp_max", "temp_min", "apparent_temp", "humidity", "cloud_cover", "cooling_degree_days", "alerts_active"].forEach(perLoc);
+    ["home insulation", "HVAC system performance", "occupancy or pet needs", "utility rate plan"].forEach((id) => facts.push({ id, loc: null, source: "external", compute: null }));
+  } else if (["outdoor_work", "home_repair", "field_work", "construction"].includes(lens)) ["temp_max", "apparent_temp", "precip_sum", "wind_speed", "humidity", "alerts_active"].forEach(perLoc);
   else ["temp_max", "temp_min", "apparent_temp", "precip_sum", "wind_speed", "alerts_active"].forEach(perLoc);
   return facts;
 }
@@ -2107,6 +2151,7 @@ function applicationKindFromPlanner(plan) {
   if (/\bdelivery|courier\b/.test(text)) return "general_delivery";
   if (/\bstargaz|star gaz|sky|meteor|telescope|astronomy\b/.test(text)) return "stargazing";
   if (/\bclothing|wear|outfit|packing\b/.test(text)) return lens.includes("pack") ? "travel_packing" : "clothing_guidance";
+  if (/\bhome_cooling|home cooling|ac|a\/c|air conditioning|thermostat|hvac|cooling demand\b/.test(text)) return "home_hvac";
   if (/\boutdoor_work|home_repair|repair|exterior|construction|jobsite|roof|crane|paint|siding|gutter|ladder\b/.test(text)) return "construction";
   if (/\bfield|crew|technician|maintenance\b/.test(text)) return "field_work";
   if (/\bexplain|dashboard|layer|score|alert meaning\b/.test(text)) return "dashboard_explainer";
@@ -2122,6 +2167,7 @@ function plannerLabelForKind(kind, plan) {
     stargazing: "Stargazing weather screening",
     clothing_guidance: "Clothing guidance",
     travel_packing: "Weather-aware packing",
+    home_hvac: "Home cooling weather guidance",
     route_travel: "Point-to-point travel weather",
     construction: "Construction weather exposure",
     field_work: "Field work weather exposure",
@@ -2136,6 +2182,7 @@ function allowedClaimForPlanner(kind, plan) {
   if (isDeliveryApplication(kind)) return `${deliveryPhrase(kind)} weather-related delay risk`;
   if (kind === "route_travel") return "weather-related travel practicality for the route endpoints and approximate corridor";
   if (kind === "stargazing") return "stargazing weather screening from cloud cover, rain, wind, and alerts";
+  if (kind === "home_hvac") return "weather-related home cooling demand and thermostat tradeoffs";
   if (["clothing_guidance", "travel_packing", "personal_comfort"].includes(kind)) return "practical comfort and clothing guidance from forecast signals";
   return plan?.goal ?? "weather-related planning context";
 }
@@ -2144,6 +2191,7 @@ function forbiddenClaimsForPlanner(kind) {
   if (isDeliveryApplication(kind)) return deliveryForbiddenClaims(kind);
   if (kind === "route_travel") return routeForbiddenClaims();
   if (kind === "stargazing") return ["dark-sky guarantee", "moon phase", "smoke or haze", "astronomical seeing", "exact cloud timing"];
+  if (kind === "home_hvac") return ["exact thermostat setting", "energy bill impact", "HVAC performance", "indoor comfort guarantee"];
   return [];
 }
 
@@ -3774,7 +3822,9 @@ function dedupeStrings(values) {
 }
 
 function cleanLocationCandidate(value) {
-  return value
+  const text = String(value ?? "");
+  const labeledLocation = text.match(/\blocation\s*:\s*([^;|]+)/i);
+  return (labeledLocation?.[1] ?? text)
     .replace(/\s+(?:this|next)?\s*weekend\b.*$/i, "")
     .replace(/\s+(?:this|next|coming)\s+week\b.*$/i, "")
     .replace(/\s+(?:today|tomorrow|tonight)\b.*$/i, "")
@@ -3796,6 +3846,7 @@ function isBadLocationCandidate(value) {
   const text = String(value ?? "").toLowerCase().trim();
   if (!text) return true;
   if (/^(my|the|a|an)\b/.test(text)) return true;
+  if (/\b(ac|a\/c|air\s*condition(?:er|ing)?|thermostat|hvac|cooling|cooler|temperature(?:s)?|increase|decrease|setpoint)\b/.test(text)) return true;
   if (/\b(food|meal|order|delivery|deliveries|delivary|package|parcel|shipment|courier|driver|amazon|doordash|ubereats|uber eats|grubhub)\b/.test(text)) {
     return true;
   }
@@ -4196,6 +4247,8 @@ function buildAssistantAdvisory(message, context, target, raw, interpretation, c
   return {
     answer: skyApplication
       ? skyFallbackAnswer(location, verdict, bestWindows, risks, seriousAlert)
+      : isHomeCoolingApplication(applicationKind)
+        ? homeCoolingFallbackAnswer(location, days, risks, seriousAlert)
       : isComfortApplication(applicationKind)
         ? comfortFallbackAnswer(location, days, risks, applicationKind)
         : fallbackAnswer(location, verdict, bestWindows, risks, provider, seriousAlert, capability),
@@ -4747,6 +4800,10 @@ function isComfortApplication(kind) {
   return ["personal_comfort", "clothing_guidance", "travel_packing"].includes(kind);
 }
 
+function isHomeCoolingApplication(kind) {
+  return kind === "home_hvac";
+}
+
 function isSkyApplication(applicationOrKind) {
   const kind = typeof applicationOrKind === "string" ? applicationOrKind : applicationOrKind?.applicationKind;
   return kind === "stargazing";
@@ -4852,6 +4909,41 @@ function comfortFallbackAnswer(location, days, risks, applicationKind) {
   return `${range} ${lead} ${advice}.${watch}`;
 }
 
+function homeCoolingFallbackAnswer(location, days, risks, seriousAlert = false) {
+  const highs = days.map((day) => numberOrNull(day.heatIndexF ?? day.tempHighF)).filter((value) => value != null);
+  const lows = days.map((day) => numberOrNull(day.tempLowF)).filter((value) => value != null);
+  const humidity = days.map((day) => numberOrNull(day.humidityPct)).filter((value) => value != null);
+  const maxHeat = highs.length ? Math.max(...highs) : null;
+  const minLow = lows.length ? Math.min(...lows) : null;
+  const avgHumidity = humidity.length ? meanNumber(humidity) : null;
+  const coolingDegreeSignal = highs.length ? Math.max(0, meanNumber(highs) - 65) : null;
+  if (seriousAlert) {
+    const alertText = risks.find((risk) => /active alert/i.test(risk)) ?? "There is active weather nearby.";
+    return `${location} has a safety-first weather flag before this becomes a thermostat question. ${alertText} Keep an eye on official alerts, and avoid making comfort decisions that put people or pets at risk.`;
+  }
+  if (maxHeat == null) {
+    return `I do not have enough temperature data for ${location} to judge home cooling demand tomorrow. I would recheck once the forecast fills in instead of guessing.`;
+  }
+  const heatPhrase =
+    maxHeat >= 100
+      ? `cooling demand looks high, with the heat index near ${Math.round(maxHeat)}F`
+      : maxHeat >= 92
+        ? `cooling demand looks elevated, with the warmest part near ${Math.round(maxHeat)}F`
+        : maxHeat >= 84
+          ? `cooling demand looks moderate, with the warmest part near ${Math.round(maxHeat)}F`
+          : `cooling demand does not look especially high, with the warmest part near ${Math.round(maxHeat)}F`;
+  const overnight =
+    minLow != null && minLow >= 76
+      ? ` Overnight relief looks limited, with lows around ${Math.round(minLow)}F.`
+      : minLow != null
+        ? ` Overnight lows around ${Math.round(minLow)}F should give the house at least some recovery time.`
+        : "";
+  const humidityText = avgHumidity != null && avgHumidity >= 70 ? " Humidity is also on the sticky side, so it may feel warmer indoors." : "";
+  const cddText = coolingDegreeSignal != null ? ` The dashboard's cooling-demand signal is roughly ${Math.round(coolingDegreeSignal)} degree-days above a 65F baseline for this slice.` : "";
+  const watch = risks.length ? ` Watch-out: ${risks.slice(0, 1).join(" ")}` : "";
+  return `For ${location}, ${heatPhrase}.${overnight}${humidityText}${cddText} Weather-wise, tomorrow is a day to avoid relaxing cooling too aggressively, especially if people, pets, or heat-sensitive equipment are inside. I cannot prescribe an exact thermostat setting or predict your bill because insulation, HVAC performance, occupancy, and utility rates are not connected.${watch}`;
+}
+
 async function callOpenAiAssistant(message, advisory, interpretation, evidence) {
   const response = await fetch(openAiResponsesUrl, {
     method: "POST",
@@ -4865,7 +4957,7 @@ async function callOpenAiAssistant(message, advisory, interpretation, evidence) 
         {
           role: "developer",
           content:
-            `You are ${assistantName}, the assistant inside a U.S. weather risk dashboard. Your persona is ${assistantPersona}: friendly enough to feel human, practical enough for real planning, and bounded enough to be trusted. You receive a structured plan, capability decision, claim cards, and verified evidence. Answer the user's actual application first, not a generic forecast: stargazing/sky viewing, clothing, comfort, packing, route or day-trip travel, outdoor timing, delivery risk, field work, exterior repairs, business operations, or dashboard explanation. Use only verified facts, claimCards, explicitBoundaries, and the supplied fallbackResponse as truth. If the user needs a follow-up, ask it naturally and briefly. If the dashboard can answer only part of the question, give the useful weather-exposure answer and plainly name what is missing. For stargazing, use cloud cover first, then rain, wind, and alerts; clearly say light pollution, moon phase, smoke/haze, local obstructions, and astronomical seeing are not connected. For route/day-trip travel, answer weather-wise only using origin/destination/corridor forecast and alert facts; say traffic, crashes, road closures, construction delays, parking, transit, and border wait times are not connected. For clothing/comfort/packing, infer practical advice from temperature highs/lows, apparent temperature, rain, wind, humidity, and alerts; be concrete about layers, rain gear, heat protection, or hydration when supported. For delivery or operations, do not claim an actual ETA, delay probability, route status, backlog, staffing effect, or SLA impact; describe only weather-related disruption risk. Do not mention JSON, schemas, internal scores, provider names, API details, source badges, raw confidence labels, or implementation details unless asked. Do not invent weather, alerts, probabilities, radar, exact storm arrival, AQI, flood, river, SLA, ETA, cost, staffing, throughput, travel time, traffic, road closure status, medical advice, business metrics, moon phase, light pollution, smoke/haze, or astronomical seeing. If alert effective/expires times are provided, describe them as the official alert window, not exact storm timing. Keep answers concise and natural: usually 2-5 sentences, and only use lists when the user asks for options or comparisons. If severe alerts, lightning, extreme heat, evacuation, or emergency issues appear, drop the jokes and tell users to follow NWS/local officials and their site safety plan.`
+            `You are ${assistantName}, the assistant inside a U.S. weather risk dashboard. Your persona is ${assistantPersona}: friendly enough to feel human, practical enough for real planning, and bounded enough to be trusted. You receive a structured plan, capability decision, claim cards, and verified evidence. Answer the user's actual application first, not a generic forecast: stargazing/sky viewing, clothing, comfort, packing, route or day-trip travel, outdoor timing, delivery risk, home cooling/thermostat tradeoffs, field work, exterior repairs, business operations, or dashboard explanation. Use only verified facts, claimCards, explicitBoundaries, and the supplied fallbackResponse as truth. If the user needs a follow-up, ask it naturally and briefly. If the dashboard can answer only part of the question, give the useful weather-exposure answer and plainly name what is missing. For stargazing, use cloud cover first, then rain, wind, and alerts; clearly say light pollution, moon phase, smoke/haze, local obstructions, and astronomical seeing are not connected. For route/day-trip travel, answer weather-wise only using origin/destination/corridor forecast and alert facts; say traffic, crashes, road closures, construction delays, parking, transit, and border wait times are not connected. For clothing/comfort/packing, infer practical advice from temperature highs/lows, apparent temperature, rain, wind, humidity, and alerts; be concrete about layers, rain gear, heat protection, or hydration when supported. For home cooling or thermostat questions, answer from heat, apparent temperature, humidity, cloud cover, and cooling-degree demand; do not prescribe an exact setpoint, utility bill outcome, HVAC performance, or indoor comfort guarantee. For delivery or operations, do not claim an actual ETA, delay probability, route status, backlog, staffing effect, or SLA impact; describe only weather-related disruption risk. Do not mention JSON, schemas, internal scores, provider names, API details, source badges, raw confidence labels, or implementation details unless asked. Do not invent weather, alerts, probabilities, radar, exact storm arrival, AQI, flood, river, SLA, ETA, cost, staffing, throughput, travel time, traffic, road closure status, medical advice, business metrics, moon phase, light pollution, smoke/haze, or astronomical seeing. If alert effective/expires times are provided, describe them as the official alert window, not exact storm timing. Keep answers concise and natural: usually 2-5 sentences, and only use lists when the user asks for options or comparisons. If severe alerts, lightning, extreme heat, evacuation, or emergency issues appear, drop the jokes and tell users to follow NWS/local officials and their site safety plan.`
         },
         {
           role: "user",
