@@ -70,7 +70,7 @@ app.innerHTML = `
   <div class="app-shell">
     <header class="topbar">
       <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-pressed="false"><span></span><span></span><span></span></button>
-      <div class="brand"><div class="logo">US</div><div><h1>Climate Risk Monitor</h1><p>Weather risk intelligence</p></div></div>
+      <div class="brand"><div class="logo">RQ</div><div><h1>RisQ</h1><p>Know weather risk before it hits.</p></div></div>
       <div class="top-spacer"></div>
       <div class="top-pill layer-pill"></div>
       <div class="top-pill status-pill"></div>

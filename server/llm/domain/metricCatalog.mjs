@@ -10,11 +10,11 @@ export const metricCatalog = {
       "plain-language comparison across visible or pinned regions",
       "outdoor planning caveats from heat, wind, rain, and severe alerts"
     ],
-    cannotSupport: ["total business risk", "dispatch certainty", "SLA impact", "cost impact", "long-term climate exposure"],
+    cannotSupport: ["total business risk", "dispatch certainty", "SLA impact", "cost impact", "long-term exposure"],
     safeExplanation:
       "A short-range weather stress summary using transmitted heat index/apparent temperature, fire-weather proxy, 10 m wind, and cooling-degree demand.",
     unsafeExplanation:
-      "Do not describe this as actual financial, logistics, safety, compliance, or climate-loss risk.",
+      "Do not describe this as actual financial, logistics, safety, compliance, or long-term loss risk.",
     businessRelevance:
       "Useful as an early warning signal for where outdoor work or customer-facing plans may need extra attention.",
     caveats: "Prototype score; not an operational safety, emergency, dispatch, financial, or compliance model."
@@ -39,7 +39,7 @@ export const metricCatalog = {
     spatialGrain: "sample point interpolated to map surface",
     temporalGrain: "current or daily forecast day",
     canSupport: ["basic weather summary", "comfort checks", "regional comparison"],
-    cannotSupport: ["microclimate certainty", "indoor conditions"],
+    cannotSupport: ["localized condition certainty", "indoor conditions"],
     safeExplanation: "Forecast near-surface air temperature.",
     unsafeExplanation: "Do not treat it as exact site temperature.",
     businessRelevance: "Useful background for staffing comfort, outdoor plans, and customer-facing activity.",

@@ -30,10 +30,10 @@ export function createSidebar(args: {
 }): SidebarController {
   const root = document.createElement("aside");
   root.className = "sidebar";
-  root.setAttribute("aria-label", "Climate risk controls");
+  root.setAttribute("aria-label", "RisQ weather risk controls");
   root.innerHTML = `
     <section class="sidebar-section">
-      <div class="section-label">Weather & Climate</div>
+      <div class="section-label">Weather Signals</div>
       <div class="layer-list weather"></div>
     </section>
     <section class="sidebar-section">

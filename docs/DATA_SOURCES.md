@@ -1,6 +1,6 @@
 # Data Sources
 
-Climate Risk Monitor uses public weather and alert APIs where possible. The app is designed to show degraded states when provider data is unavailable.
+RisQ uses public weather and alert APIs where possible. The app is designed to show degraded states when provider data is unavailable.
 
 ## Forecast
 
@@ -70,4 +70,3 @@ The app should not fabricate replacement weather values. If a provider fails:
 ## Operational Caution
 
 This dashboard is advisory. It should not be used as the only source for emergency, safety, dispatch, financial, compliance, medical, or legal decisions. Always follow official weather services and local authorities for safety-critical calls.
-

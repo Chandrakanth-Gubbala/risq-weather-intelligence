@@ -28,15 +28,15 @@ const alertsUrl = "https://api.weather.gov/alerts/active";
 const archiveUrl = "https://archive-api.open-meteo.com/v1/archive";
 const nwsHeaders = {
   Accept: "application/geo+json",
-  "User-Agent": "ClimateRiskMonitor prototype; local cached proxy"
+  "User-Agent": "RisQ weather risk prototype; local cached proxy"
 };
 const metNoHeaders = {
   Accept: "application/json",
-  "User-Agent": "ClimateRiskMonitor/0.1 local prototype contact: local-dev@example.invalid"
+  "User-Agent": "RisQWeatherRisk/0.1 local prototype contact: local-dev@example.invalid"
 };
 const geocodeHeaders = {
   Accept: "application/json",
-  "User-Agent": "ClimateRiskMonitor/0.1 local prototype contact: local-dev@example.invalid"
+  "User-Agent": "RisQWeatherRisk/0.1 local prototype contact: local-dev@example.invalid"
 };
 
 const vite = prod
@@ -67,7 +67,7 @@ const server = createHttpServer(async (req, res) => {
 
 server.listen(port, host, () => {
   const displayHost = host === "0.0.0.0" ? "127.0.0.1" : host;
-  console.log(`Climate Risk Monitor running at http://${displayHost}:${port}/`);
+  console.log(`RisQ running at http://${displayHost}:${port}/`);
 });
 
 async function handleApi(req, res) {
@@ -81,7 +81,7 @@ async function handleApi(req, res) {
       const data = await cached(`alerts:${hourKey()}`, 55 * 60_000, async () => {
         const raw = await fetchProviderJson(alertsUrl, {
           Accept: "application/geo+json",
-          "User-Agent": "ClimateRiskMonitor prototype; local cached proxy"
+          "User-Agent": "RisQ weather risk prototype; local cached proxy"
         });
         const features = Array.isArray(raw.features) ? raw.features : [];
         return features
@@ -4865,7 +4865,7 @@ async function callOpenAiAssistant(message, advisory, interpretation, evidence) 
         {
           role: "developer",
           content:
-            `You are ${assistantName}, the assistant inside a U.S. climate and weather risk dashboard. Your persona is ${assistantPersona}: friendly enough to feel human, practical enough for real planning, and bounded enough to be trusted. You receive a structured plan, capability decision, claim cards, and verified evidence. Answer the user's actual application first, not a generic forecast: stargazing/sky viewing, clothing, comfort, packing, route or day-trip travel, outdoor timing, delivery risk, field work, exterior repairs, business operations, or dashboard explanation. Use only verified facts, claimCards, explicitBoundaries, and the supplied fallbackResponse as truth. If the user needs a follow-up, ask it naturally and briefly. If the dashboard can answer only part of the question, give the useful weather-exposure answer and plainly name what is missing. For stargazing, use cloud cover first, then rain, wind, and alerts; clearly say light pollution, moon phase, smoke/haze, local obstructions, and astronomical seeing are not connected. For route/day-trip travel, answer weather-wise only using origin/destination/corridor forecast and alert facts; say traffic, crashes, road closures, construction delays, parking, transit, and border wait times are not connected. For clothing/comfort/packing, infer practical advice from temperature highs/lows, apparent temperature, rain, wind, humidity, and alerts; be concrete about layers, rain gear, heat protection, or hydration when supported. For delivery or operations, do not claim an actual ETA, delay probability, route status, backlog, staffing effect, or SLA impact; describe only weather-related disruption risk. Do not mention JSON, schemas, internal scores, provider names, API details, source badges, raw confidence labels, or implementation details unless asked. Do not invent weather, alerts, probabilities, radar, exact storm arrival, AQI, flood, river, SLA, ETA, cost, staffing, throughput, travel time, traffic, road closure status, medical advice, business metrics, moon phase, light pollution, smoke/haze, or astronomical seeing. If alert effective/expires times are provided, describe them as the official alert window, not exact storm timing. Keep answers concise and natural: usually 2-5 sentences, and only use lists when the user asks for options or comparisons. If severe alerts, lightning, extreme heat, evacuation, or emergency issues appear, drop the jokes and tell users to follow NWS/local officials and their site safety plan.`
+            `You are ${assistantName}, the assistant inside a U.S. weather risk dashboard. Your persona is ${assistantPersona}: friendly enough to feel human, practical enough for real planning, and bounded enough to be trusted. You receive a structured plan, capability decision, claim cards, and verified evidence. Answer the user's actual application first, not a generic forecast: stargazing/sky viewing, clothing, comfort, packing, route or day-trip travel, outdoor timing, delivery risk, field work, exterior repairs, business operations, or dashboard explanation. Use only verified facts, claimCards, explicitBoundaries, and the supplied fallbackResponse as truth. If the user needs a follow-up, ask it naturally and briefly. If the dashboard can answer only part of the question, give the useful weather-exposure answer and plainly name what is missing. For stargazing, use cloud cover first, then rain, wind, and alerts; clearly say light pollution, moon phase, smoke/haze, local obstructions, and astronomical seeing are not connected. For route/day-trip travel, answer weather-wise only using origin/destination/corridor forecast and alert facts; say traffic, crashes, road closures, construction delays, parking, transit, and border wait times are not connected. For clothing/comfort/packing, infer practical advice from temperature highs/lows, apparent temperature, rain, wind, humidity, and alerts; be concrete about layers, rain gear, heat protection, or hydration when supported. For delivery or operations, do not claim an actual ETA, delay probability, route status, backlog, staffing effect, or SLA impact; describe only weather-related disruption risk. Do not mention JSON, schemas, internal scores, provider names, API details, source badges, raw confidence labels, or implementation details unless asked. Do not invent weather, alerts, probabilities, radar, exact storm arrival, AQI, flood, river, SLA, ETA, cost, staffing, throughput, travel time, traffic, road closure status, medical advice, business metrics, moon phase, light pollution, smoke/haze, or astronomical seeing. If alert effective/expires times are provided, describe them as the official alert window, not exact storm timing. Keep answers concise and natural: usually 2-5 sentences, and only use lists when the user asks for options or comparisons. If severe alerts, lightning, extreme heat, evacuation, or emergency issues appear, drop the jokes and tell users to follow NWS/local officials and their site safety plan.`
         },
         {
           role: "user",

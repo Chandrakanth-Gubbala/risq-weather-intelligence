@@ -1,6 +1,6 @@
 # Deployment
 
-Climate Risk Monitor is a Node-served Vite app. Use a platform that can run a Node web service.
+RisQ is a Node-served Vite app. Use a platform that can run a Node web service.
 
 ## Why Not GitHub Pages Only?
 
@@ -61,4 +61,3 @@ Expected response:
 - The app uses hourly in-memory caching. Cache is reset when the process restarts.
 - If hosted on a free tier, first load may be slow after the service sleeps.
 - Provider rate limits or outages can still cause degraded dashboard states.
-

@@ -1,6 +1,6 @@
 # Architecture
 
-Climate Risk Monitor is a Vite + TypeScript frontend served by a small Node HTTP server. The server is intentionally part of the app because provider calls, caching, API fallbacks, and optional OpenAI calls should not run directly in the browser.
+RisQ is a Vite + TypeScript frontend served by a small Node HTTP server. The server is intentionally part of the app because provider calls, caching, API fallbacks, and optional OpenAI calls should not run directly in the browser.
 
 ## Runtime Flow
 
@@ -81,4 +81,3 @@ npm start
 ```
 
 `npm start` runs the Node server in production mode and serves the built Vite files from `dist/`.
-

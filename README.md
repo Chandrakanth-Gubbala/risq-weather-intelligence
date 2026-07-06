@@ -1,8 +1,10 @@
-# Climate Risk Monitor
+# RisQ
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Chandrakanth-Gubbala/climate-risk-dashboard)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Chandrakanth-Gubbala/risq-weather-intelligence)
 
-Climate Risk Monitor is an interactive U.S. weather and business-risk dashboard. It combines a Leaflet map, custom canvas heat interpolation, live forecast signals, NOAA/NWS alerts, ranked regions, local detail panels, comparison tools, and a weather-aware assistant named SkyScout.
+**Know weather risk before it hits.**
+
+RisQ is an interactive U.S. weather risk intelligence dashboard. It combines a Leaflet map, custom canvas heat interpolation, live forecast signals, NOAA/NWS alerts, ranked regions, local detail panels, comparison tools, and a weather-aware assistant named SkyScout.
 
 The project is a prototype, but it is built to be honest about data quality: if a provider fails, the UI degrades visibly instead of inventing weather values.
 
@@ -130,7 +132,7 @@ The included [render.yaml](render.yaml) can be used as a Render blueprint.
 ## Project Structure
 
 ```txt
-climate-risk-dashboard/
+risq-weather-intelligence/
   server/                 Node server, provider proxy, SkyScout API
   src/
     data/                 API client, normalization, derived metrics, regions
@@ -149,3 +151,4 @@ climate-risk-dashboard/
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data Sources](docs/DATA_SOURCES.md)
 - [Deployment](docs/DEPLOYMENT.md)
+
