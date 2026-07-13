@@ -65,6 +65,7 @@ const refinementAttempted = new Set<string>();
 let refinementBlockedUntil = 0;
 let mapController: MapController;
 let rawForecast: unknown[] | null = null;
+let assistantMapLocation: { lat: number; lon: number; label: string } | null = null;
 
 app.innerHTML = `
   <div class="app-shell">
@@ -72,12 +73,12 @@ app.innerHTML = `
       <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-pressed="false"><span></span><span></span><span></span></button>
       <div class="brand"><div class="logo">RQ</div><div><h1>RisQ</h1><p>Know weather risk before it hits.</p></div></div>
       <div class="top-spacer"></div>
-      <div class="top-pill layer-pill"></div>
-      <div class="top-pill status-pill"></div>
+      <div class="top-pill layer-pill" aria-label="Active weather layer"></div>
+      <div class="top-pill status-pill" aria-label="Live data status"></div>
       <button class="top-pill alerts-pill" type="button"></button>
-      <div class="top-pill risks-pill"></div>
-      <div class="top-pill updated-pill"></div>
-      <div class="top-pill source-health" tabindex="0">
+      <div class="top-pill risks-pill" aria-label="Highest risk regions"></div>
+      <div class="top-pill updated-pill" aria-label="Last updated time"></div>
+      <div class="top-pill source-health" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" title="Show provider health">
         <span>Source health</span>
         <div class="source-popover hidden"></div>
       </div>
@@ -227,7 +228,22 @@ alertsPill.addEventListener("click", () => {
   mapController.setAlertsEnabled(alertsEnabled);
   render();
 });
-sourceHealth.addEventListener("click", () => sourcePopover.classList.toggle("hidden"));
+sourceHealth.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleSourcePopover();
+});
+sourceHealth.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  toggleSourcePopover();
+});
+document.addEventListener("click", (event) => {
+  if (sourceHealth.contains(event.target as Node)) return;
+  toggleSourcePopover(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") toggleSourcePopover(false);
+});
 workspaceTabs.querySelectorAll<HTMLButtonElement>("button[data-tab]").forEach((button) => {
   button.addEventListener("click", () => {
     activeInspectorTab = button.dataset.tab === "compare" ? "compare" : "details";
@@ -290,16 +306,21 @@ function renderInspectorWorkspace(): void {
 
 function updateHeader(): void {
   layerPill.textContent = `${activeLayer.label} · ${activeLayer.subtitle ?? activeLayer.unit}`;
+  layerPill.title = `${activeLayer.label}: ${activeLayer.caveat ?? activeLayer.subtitle ?? activeLayer.unit}`;
   statusPill.textContent = statusLabel();
+  statusPill.title = baseStatus === "ready" ? `Forecast status: ${sourceBadge}` : `Forecast status: ${baseStatus}`;
   alertsPill.textContent =
     alertStatus === "loading"
       ? "Alerts loading"
       : alertStatus === "unavailable"
         ? "Alerts unavailable"
         : `${alertsEnabled ? "Alerts on" : "Alerts off"} · ${alerts.length}`;
+  alertsPill.title = alertsEnabled ? "Hide NWS alert polygons" : "Show NWS alert polygons";
   alertsPill.classList.toggle("off", !alertsEnabled);
   risksPill.textContent = topRiskSummary();
+  risksPill.title = risksPill.textContent;
   updatedPill.textContent = baseStatus === "loading" ? "Fetching..." : `Updated ${formatTime()}`;
+  updatedPill.title = "Local dashboard refresh time";
   sourcePopover.innerHTML = `
     <div><span>Forecast</span><b>${providerText(forecastStatus, sourceBadge)}</b></div>
     <div><span>Alerts</span><b>${providerText(alertStatus, "NOAA/NWS")}</b></div>
@@ -307,6 +328,13 @@ function updateHeader(): void {
     <div><span>Data note</span><b>${sourceBadge === "DEMO DATA" ? "Demo fallback" : "Live provider path"}</b></div>
   `;
   sourceHealth.classList.toggle("demo", sourceBadge === "DEMO DATA");
+}
+
+function toggleSourcePopover(force?: boolean): void {
+  const open = force ?? sourcePopover.classList.contains("hidden");
+  sourcePopover.classList.toggle("hidden", !open);
+  sourceHealth.classList.toggle("popover-open", open);
+  sourceHealth.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function statusLabel(): string {
@@ -374,6 +402,13 @@ function assistantContext(conversationState: AssistantConversationState | null =
       .map((id) => points.find((p) => p.sample.id === id))
       .filter((p): p is PointData => !!p)
       .map((p) => ({ id: p.sample.id, name: p.sample.name, state: p.sample.state, score: p.derived.score, layers: assistantLayers(p) })),
+    assistantLocation: assistantMapLocation
+      ? {
+          label: assistantMapLocation.label,
+          lat: assistantMapLocation.lat,
+          lon: assistantMapLocation.lon
+        }
+      : null,
     alerts: alerts
       .filter((alert) => alertIntersectsBounds(alert, bounds))
       .slice(0, 8)
@@ -431,6 +466,12 @@ function geometryBox(geometry: GeoJSON.Geometry | null | undefined): null | { no
 
 function assistantContextLabel(selected: PointData | null): string {
   if (selected) return `Using ${selected.sample.name}, ${selected.sample.state} · ${sourceBadge}`;
+  if (assistantMapLocation) {
+    const center = mapController.map.getCenter();
+    if (cosineDistance({ lat: center.lat, lon: center.lng }, assistantMapLocation) <= 0.6) {
+      return `Using ${assistantMapLocation.label} · ${sourceBadge}`;
+    }
+  }
   const center = mapController.map.getCenter();
   return `Using map center ${center.lat.toFixed(2)}, ${center.lng.toFixed(2)} · ${sourceBadge}`;
 }
@@ -439,19 +480,24 @@ function executeAssistantActions(actions: AssistantAction[]): void {
   for (const action of actions.slice(0, 1)) {
     if (action.type !== "flyTo" || !Number.isFinite(action.lat) || !Number.isFinite(action.lon)) continue;
     const zoom = Math.max(5, Math.min(10, Number(action.zoom) || 8));
+    assistantMapLocation = { lat: action.lat, lon: action.lon, label: action.label };
     mapController.map.flyTo([action.lat, action.lon], zoom, { duration: 0.7 });
     mapController.setAssistantLocation({ lat: action.lat, lon: action.lon, label: action.label });
-    const nearest = nearestNamedPoint(action.lat, action.lon);
+    const nearest = nearestNamedPoint(action.lat, action.lon, action.label);
     if (nearest) {
       selectedId = nearest.sample.id;
       activeInspectorTab = "details";
       if (!trendCache.has(nearest.sample.id)) void loadTrend(nearest);
       render();
+    } else {
+      selectedId = null;
+      activeInspectorTab = "details";
+      render();
     }
   }
 }
 
-function nearestNamedPoint(lat: number, lon: number): PointData | null {
+function nearestNamedPoint(lat: number, lon: number, label = ""): PointData | null {
   let best: PointData | null = null;
   let bestD = Infinity;
   for (const point of points) {
@@ -462,7 +508,17 @@ function nearestNamedPoint(lat: number, lon: number): PointData | null {
       best = point;
     }
   }
-  return best && bestD <= 2.5 ? best : null;
+  if (!best) return null;
+  const samePlace = labelMatchesPoint(label, best);
+  return bestD <= (samePlace ? 2.5 : 0.16) ? best : null;
+}
+
+function labelMatchesPoint(label: string, point: PointData): boolean {
+  const source = label.toLowerCase();
+  const name = String(point.sample.name ?? "").toLowerCase();
+  const state = String(point.sample.state ?? "").toLowerCase();
+  if (!name) return false;
+  return source.includes(name) && (!state || source.includes(state));
 }
 
 async function loadBase(): Promise<void> {
@@ -574,6 +630,7 @@ function selectedPoint(): PointData | null {
 
 function selectRegion(id: string): void {
   selectedId = id;
+  assistantMapLocation = null;
   activeInspectorTab = "details";
   const p = selectedPoint();
   if (p) {

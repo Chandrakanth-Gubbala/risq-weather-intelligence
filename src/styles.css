@@ -3582,3 +3582,170 @@ details summary {
 .app-shell.sidebar-collapsed.workspace-open .inspector-slot {
   left: 84px;
 }
+
+/* Feedback polish: clickable controls should visibly respond, and the header should keep source health reachable at 100% zoom. */
+.topbar {
+  min-width: 0;
+}
+
+.brand {
+  flex: 0 1 224px;
+  min-width: 148px;
+}
+
+.top-spacer {
+  flex: 1 1 12px;
+  min-width: 6px;
+}
+
+.top-pill {
+  min-width: 0;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.layer-pill {
+  max-width: min(360px, 24vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.risks-pill {
+  max-width: min(330px, 22vw);
+}
+
+.updated-pill {
+  flex: 0 1 auto;
+}
+
+.source-health {
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.top-pill:hover,
+.top-pill:focus-visible,
+.source-health.popover-open,
+.sidebar-toggle:hover,
+.sidebar-toggle:focus-visible,
+.layer-card:hover,
+.rank-row:hover,
+.legend-toggle:hover,
+.assistant-fab:hover,
+.assistant-starters button:hover,
+.assistant-form button:hover,
+.detail-actions button:hover,
+.compare-tray button:hover {
+  border-color: rgba(56, 189, 248, 0.68);
+  background: rgba(8, 47, 73, 0.84);
+  color: #e0f2fe;
+  box-shadow:
+    inset 0 0 0 1px rgba(186, 230, 253, 0.08),
+    0 0 0 3px rgba(56, 189, 248, 0.1);
+}
+
+.alerts-pill:hover,
+.alerts-pill:focus-visible {
+  border-color: rgba(251, 146, 60, 0.72);
+  background: rgba(67, 32, 12, 0.96);
+  color: #ffedd5;
+}
+
+.source-health.demo:hover,
+.source-health.demo:focus-visible,
+.source-health.demo.popover-open {
+  border-color: rgba(251, 146, 60, 0.72);
+  background: rgba(67, 32, 12, 0.96);
+  color: #ffedd5;
+}
+
+.sidebar-toggle:hover span,
+.sidebar-toggle:focus-visible span {
+  width: 18px;
+}
+
+.legend-toggle {
+  position: relative;
+}
+
+.legend-toggle .ui-icon {
+  flex: 0 0 auto;
+}
+
+.legend-toggle::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 10px;
+  bottom: calc(100% + 8px);
+  z-index: 980;
+  width: min(280px, 70vw);
+  display: none;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 10px;
+  background: rgba(8, 12, 18, 0.98);
+  color: #dbeafe;
+  box-shadow: var(--shadow);
+  padding: 9px 10px;
+  font: 500 11px/1.35 "Inter", sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+}
+
+.legend-toggle:hover::after,
+.legend-toggle:focus-visible::after {
+  display: block;
+}
+
+@media (max-width: 1500px) {
+  .brand {
+    flex-basis: 196px;
+  }
+
+  .layer-pill {
+    max-width: 300px;
+  }
+
+  .risks-pill {
+    max-width: 260px;
+  }
+}
+
+@media (max-width: 1360px) {
+  .updated-pill {
+    display: none;
+  }
+
+  .layer-pill {
+    max-width: 260px;
+  }
+}
+
+@media (max-width: 1240px) {
+  .risks-pill {
+    display: none;
+  }
+
+  .brand {
+    flex-basis: 176px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .brand p {
+    display: none;
+  }
+
+  .brand {
+    min-width: 112px;
+    flex-basis: 132px;
+  }
+
+  .layer-pill {
+    max-width: 210px;
+  }
+}

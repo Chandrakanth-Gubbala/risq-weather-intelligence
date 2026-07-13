@@ -874,6 +874,9 @@ const PLACE_ALIASES = {
   boise: "Boise, ID",
   "boise id": "Boise, ID",
   "boise idaho": "Boise, ID",
+  hayward: "Hayward, CA",
+  "hayward ca": "Hayward, CA",
+  "hayward california": "Hayward, CA",
   albany: "Albany, NY",
   "albany ny": "Albany, NY"
 };
@@ -2691,6 +2694,7 @@ function extractLocation(message) {
   const cleaned = message.replace(/\s+/g, " ").trim();
   const patterns = [
     /^([A-Z][A-Za-z .'-]+,\s*(?:[A-Z]{2}|[A-Za-z .'-]+))$/i,
+    /^([A-Z][A-Za-z .'-]{2,40}\s+(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC))$/i,
     /\b(?:house|home|site|job|work|repair|repairs|project|property)\s+is\s+in\s+([A-Z][A-Za-z .'-]{2,40})(?:[?.!,]|$)/i,
     /\b(?:house|home|site|job|work|repair|repairs|project|property).*?\b(?:in|near|around|at)\s+([A-Z][A-Za-z .'-]+,\s*(?:[A-Z]{2}|[A-Za-z .'-]+))(?:\b|[?.!,]|$)/i,
     /\b(?:amazon|package|shipment|parcel|delivery|deliveries|delivary).*?\b(?:in|near|around|at|for)\s+([A-Z][A-Za-z .'-]+,\s*(?:[A-Z]{2}|[A-Za-z .'-]+))(?:\b|[?.!,]|$)/i,
@@ -2803,6 +2807,27 @@ async function resolveAssistantTarget(locationText, selected, center, context = 
         lon: Number(selected.lon)
       }
     };
+  }
+  const assistantLocation = context?.assistantLocation && typeof context.assistantLocation === "object" ? context.assistantLocation : null;
+  if (assistantLocation && Number.isFinite(Number(assistantLocation.lat)) && Number.isFinite(Number(assistantLocation.lon))) {
+    const lat = Number(assistantLocation.lat);
+    const lon = Number(assistantLocation.lon);
+    const label = String(assistantLocation.label ?? "").trim() || `map area near ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    const centerLat = Number(center?.lat);
+    const centerLon = Number(center?.lon);
+    const closeToCenter = !Number.isFinite(centerLat) || !Number.isFinite(centerLon) || distanceMiles(lat, lon, centerLat, centerLon) <= 80;
+    if (closeToCenter) {
+      return {
+        label,
+        point: {
+          id: `assistant-${slugify(label)}`,
+          kind: "refinement",
+          domain: domainForLatLon(lat, lon),
+          lat,
+          lon
+        }
+      };
+    }
   }
   if (center && Number.isFinite(Number(center.lat)) && Number.isFinite(Number(center.lon))) {
     const nearest = nearestVisiblePoint(context, center);
@@ -2962,6 +2987,11 @@ function parseCityState(query) {
   if (comma) return { city: comma[1].trim(), state: comma[2].trim() };
   const tail = cleaned.match(/^(.+?)\s+([A-Za-z]{2})$/);
   if (tail) return { city: tail[1].trim(), state: tail[2].trim() };
+  for (const [abbr, full] of Object.entries(US_STATES)) {
+    const re = new RegExp(`^(.+?)\\s+(?:${escapeRegExp(full)}|${escapeRegExp(abbr)})$`, "i");
+    const match = cleaned.match(re);
+    if (match) return { city: match[1].trim(), state: full };
+  }
   return { city: cleaned, state: null };
 }
 
@@ -2973,6 +3003,10 @@ function stateNameFor(value) {
 function stateAbbrevFor(name) {
   const found = Object.entries(US_STATES).find(([, full]) => full.toLowerCase() === String(name ?? "").toLowerCase());
   return found?.[0].toUpperCase() ?? name;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 const US_STATES = {
@@ -3104,6 +3138,9 @@ function knownPlace(query) {
     "new york ny": ["New York, NY", 40.7128, -74.006],
     "los angeles": ["Los Angeles, CA", 34.0522, -118.2437],
     "los angeles ca": ["Los Angeles, CA", 34.0522, -118.2437],
+    hayward: ["Hayward, CA", 37.6688, -122.0808],
+    "hayward ca": ["Hayward, CA", 37.6688, -122.0808],
+    "hayward california": ["Hayward, CA", 37.6688, -122.0808],
     miami: ["Miami, FL", 25.7617, -80.1918],
     denver: ["Denver, CO", 39.7392, -104.9903],
     atlanta: ["Atlanta, GA", 33.749, -84.388],

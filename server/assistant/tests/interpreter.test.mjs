@@ -68,6 +68,32 @@ test("interpreter verifier repairs nationwide scope from deterministic fallback"
   assert.ok(!packet.slotProposals.includes("search_scope"));
 });
 
+test("interpreter preserves route context for underspecified follow-ups", async () => {
+  const packet = await interpretContextPacket("when would be the best time to start?", {
+    forceLocal: true,
+    context: assistantContext(),
+    session: routeSession()
+  });
+  const labels = packet.locations.map((item) => item.normalized).join(" | ");
+  assert.equal(packet.turnType, "refinement");
+  assert.equal(packet.application.decisionType, "route_assessment");
+  assert.match(labels, /Rochester, NY/);
+  assert.match(labels, /New York, NY/);
+  assert.ok(packet.claimFrame.forbiddenClaims.includes("traffic_or_road_status"));
+});
+
+test("interpreter lets explicit new locations override route memory", async () => {
+  const packet = await interpretContextPacket("tomorrow in Boston", {
+    forceLocal: true,
+    context: assistantContext(),
+    session: routeSession()
+  });
+  const labels = packet.locations.map((item) => item.normalized).join(" | ");
+  assert.notEqual(packet.application.decisionType, "route_assessment");
+  assert.match(labels, /Boston, MA/);
+  assert.doesNotMatch(labels, /Rochester, NY|New York, NY/);
+});
+
 function checkExpected(expected, packet) {
   const failures = [];
   const checks = [];
@@ -120,6 +146,33 @@ function fakeSession(slotId) {
       attempts: 1
     },
     entities: { locations: [], lastScope: null, lastTimeWindow: null, lastApplication: null }
+  };
+}
+
+function routeSession() {
+  return {
+    id: "route-session",
+    turnCounter: 3,
+    transcript: [],
+    pendingSlot: null,
+    storedPlan: {
+      activity: "route travel",
+      lens: "route_travel",
+      locations: [
+        { raw: "Rochester, NY", normalized: "Rochester, NY", role: "origin" },
+        { raw: "New York, NY", normalized: "New York, NY", role: "destination" }
+      ],
+      timeWindow: { type: "day", value: "tomorrow" }
+    },
+    entities: {
+      locations: [
+        { label: "New York, NY", lat: null, lon: null },
+        { label: "Rochester, NY", lat: null, lon: null }
+      ],
+      lastScope: null,
+      lastTimeWindow: { type: "day", value: "tomorrow" },
+      lastApplication: "route_travel"
+    }
   };
 }
 

@@ -64,5 +64,11 @@
     "current": { "temperature_2m": 96, "apparent_temperature": 94, "relative_humidity_2m": 18, "wind_speed_10m": 8, "precipitation": 0, "cloud_cover": 3 },
     "daily": { "time": ["2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09"], "temperature_2m_max": [109, 111, 112, 110], "temperature_2m_min": [87, 88, 89, 88], "apparent_temperature_max": [107, 109, 111, 108], "precipitation_sum": [0, 0, 0, 0], "wind_speed_10m_max": [13, 16, 18, 14], "cloud_cover_mean": [4, 5, 8, 6] },
     "hourly": { "time": ["2026-07-06T08:00", "2026-07-06T12:00", "2026-07-06T16:00", "2026-07-06T20:00"], "temperature_2m": [92, 105, 109, 101], "apparent_temperature": [90, 103, 107, 99], "precipitation": [0, 0, 0, 0], "wind_speed_10m": [6, 10, 13, 9], "cloud_cover": [2, 4, 5, 3] }
+  },
+  "37.7,-122.1": {
+    "source": { "provider": "fixture" },
+    "current": { "temperature_2m": 66, "apparent_temperature": 66, "relative_humidity_2m": 68, "wind_speed_10m": 10, "precipitation": 0, "cloud_cover": 42 },
+    "daily": { "time": ["2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09"], "temperature_2m_max": [72, 74, 76, 73], "temperature_2m_min": [56, 57, 58, 57], "apparent_temperature_max": [72, 75, 77, 73], "precipitation_sum": [0, 0.01, 0.02, 0], "wind_speed_10m_max": [14, 16, 15, 13], "cloud_cover_mean": [40, 46, 52, 38] },
+    "hourly": { "time": ["2026-07-06T08:00", "2026-07-06T12:00", "2026-07-06T16:00", "2026-07-06T20:00"], "temperature_2m": [60, 69, 72, 64], "apparent_temperature": [60, 69, 72, 64], "precipitation": [0, 0, 0.01, 0], "wind_speed_10m": [6, 11, 14, 9], "cloud_cover": [44, 42, 38, 48] }
   }
 }

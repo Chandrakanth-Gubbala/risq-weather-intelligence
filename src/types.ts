@@ -187,6 +187,11 @@ export type AssistantContext = {
     score: number;
     layers?: Partial<Record<LayerId, number | null>>;
   }[];
+  assistantLocation?: null | {
+    label: string;
+    lat: number;
+    lon: number;
+  };
   alerts: {
     event: string;
     severity: string;

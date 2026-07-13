@@ -9,6 +9,7 @@ const slotIds = new Set(["location", "origin", "destination", "time_window", "se
 
 export async function interpretContextPacket(message, { context = {}, session = null, forceLocal = false } = {}) {
   const fallback = verifyContextPacket(localInterpretContextPacket(message, { context, session }), { context, message });
+  if (fallback.turnType === "refinement" && shouldTrustMemoryRefinement(message)) return fallback;
   if (forceLocal || !process.env.OPENAI_API_KEY) return fallback;
   try {
     const raw = await callOpenAiInterpreter(message, context, session);
@@ -16,6 +17,18 @@ export async function interpretContextPacket(message, { context = {}, session = 
   } catch {
     return fallback;
   }
+}
+
+function shouldTrustMemoryRefinement(message) {
+  const text = String(message ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!text) return false;
+  if (/\b(news|recipe|stock|movie|sports|election|politics|code)\b/.test(text)) return false;
+  if (/\b(in|near|at|from|to)\s+[a-z][a-z .'-]{2,}/i.test(message)) return false;
+  return (
+    /^(?:what about|how about|and|also)\b/.test(text) ||
+    /\b(?:tomorrow|tonight|morning|afternoon|evening|next week|weekend)\b/.test(text) ||
+    /\b(?:when|best time|start|leave|depart|go)\b/.test(text)
+  );
 }
 
 export function verifyContextPacket(raw, { context = {}, message = "", fallback = null } = {}) {

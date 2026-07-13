@@ -1,0 +1,76 @@
+%%{init: {'flowchart': {'curve': 'linear'}}}%%
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	receive_request["Receive Request"]
+	fast_path_gate["Fast Path Gate"]
+	greeting_response["Greeting Response"]
+	alert_glossary_response["Alert Glossary Response"]
+	context_interpreter["Context Interpreter"]
+	planner_adapter["Planner Adapter"]
+	session_memory_merge["Session Memory Merge"]
+	planner_guardrail_gate["Planner Guardrail Gate"]
+	out_of_scope_response["Out Of Scope Response"]
+	cancel_pending_response["Cancel Pending Response"]
+	followup_response["Followup Response"]
+	plan_execution_setup["Plan Execution Setup"]
+	capability_gate["Capability Gate"]
+	capability_response["Capability Response"]
+	layer_explanation_gate["Layer Explanation Gate"]
+	layer_explanation_response["Layer Explanation Response"]
+	evidence_scope_resolver["Evidence Scope Resolver"]
+	route_targets["Route Targets"]
+	ranking_targets["Ranking Targets"]
+	single_location_target["Single Location Target"]
+	fetch_forecast_evidence["Fetch Forecast Evidence"]
+	build_evidence_table["Build Evidence Table"]
+	deterministic_answer["Deterministic Answer"]
+	llm_writer_gate["LLM Writer Gate"]
+	llm_answer_writer["LLM Answer Writer"]
+	claim_verifier["Claim Verifier"]
+	legacy_specialized_fallback["Legacy Specialized Fallback"]
+	finalize_session_response["Finalize Session Response"]
+	__end__([<p>__end__</p>]):::last
+	__start__ --> receive_request;
+	alert_glossary_response --> finalize_session_response;
+	cancel_pending_response --> finalize_session_response;
+	capability_response --> finalize_session_response;
+	claim_verifier --> finalize_session_response;
+	context_interpreter --> planner_adapter;
+	deterministic_answer --> llm_writer_gate;
+	fetch_forecast_evidence --> build_evidence_table;
+	finalize_session_response --> __end__;
+	followup_response --> finalize_session_response;
+	greeting_response --> finalize_session_response;
+	layer_explanation_response --> finalize_session_response;
+	legacy_specialized_fallback --> finalize_session_response;
+	llm_answer_writer --> claim_verifier;
+	out_of_scope_response --> finalize_session_response;
+	plan_execution_setup --> capability_gate;
+	planner_adapter --> session_memory_merge;
+	ranking_targets --> fetch_forecast_evidence;
+	receive_request --> fast_path_gate;
+	route_targets --> fetch_forecast_evidence;
+	session_memory_merge --> planner_guardrail_gate;
+	single_location_target --> fetch_forecast_evidence;
+	fast_path_gate -.-> greeting_response;
+	fast_path_gate -.-> alert_glossary_response;
+	fast_path_gate -.-> context_interpreter;
+	planner_guardrail_gate -.-> out_of_scope_response;
+	planner_guardrail_gate -.-> cancel_pending_response;
+	planner_guardrail_gate -.-> followup_response;
+	planner_guardrail_gate -.-> plan_execution_setup;
+	capability_gate -.-> capability_response;
+	capability_gate -.-> layer_explanation_gate;
+	layer_explanation_gate -.-> layer_explanation_response;
+	layer_explanation_gate -.-> evidence_scope_resolver;
+	evidence_scope_resolver -.-> route_targets;
+	evidence_scope_resolver -.-> ranking_targets;
+	evidence_scope_resolver -.-> single_location_target;
+	evidence_scope_resolver -.-> legacy_specialized_fallback;
+	build_evidence_table -.-> deterministic_answer;
+	build_evidence_table -.-> legacy_specialized_fallback;
+	llm_writer_gate -.-> llm_answer_writer;
+	llm_writer_gate -.-> claim_verifier;
+	classDef default fill:#f2f0ff,line-height:1.2;
+	classDef first fill-opacity:0;
+	classDef last fill:#bfb6fc;

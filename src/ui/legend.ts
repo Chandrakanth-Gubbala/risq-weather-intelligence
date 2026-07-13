@@ -33,6 +33,9 @@ export function createLegend(): LegendController {
     el: root,
     update(layer, timeIdx, dates, cursor, timeMode = "daily", hourlyTimes = []) {
       title.textContent = `${layer.label}${timeIdx == null ? "" : ` · ${forecastLabel(dates, timeIdx, timeMode, hourlyTimes).split(" · ")[1]}`}`;
+      const tooltip = layer.caveat || `${layer.label} legend. ${layer.subtitle ?? layer.unit}`;
+      toggle.dataset.tooltip = tooltip;
+      toggle.title = tooltip;
       const scoreLike = layer.id === "risk" || layer.id === "fire";
       const labels = scoreLike ? ["Low", "Moderate", "High", "Extreme"] : [layer.legend[0], "", "", layer.legend[1]];
       limits.forEach((item, i) => {

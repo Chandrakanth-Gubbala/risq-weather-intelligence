@@ -9,11 +9,13 @@
   "scripts": {
     "dev": "node server/index.mjs",
     "build": "tsc && vite build",
+    "graph:skyscout": "node scripts/export-skyscout-graph.mjs",
     "test:assistant": "node --test server/assistant/tests/*.test.mjs",
     "preview": "node server/index.mjs --prod",
     "start": "node server/index.mjs --prod"
   },
   "dependencies": {
+    "@langchain/langgraph": "^1.4.7",
     "@vitejs/plugin-legacy": "latest",
     "leaflet": "1.9.4",
     "typescript": "latest",

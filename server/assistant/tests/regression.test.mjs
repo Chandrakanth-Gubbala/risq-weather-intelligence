@@ -108,6 +108,18 @@ test("REG-5: visible-area fire ranking still uses current map candidates", async
   assert.ok(/Houston|Dallas|Phoenix/.test(response.answer), "expected a visible-map city in the answer");
 });
 
+test("REG-6: explicit non-sample city geocoding should stay on the requested city", async () => {
+  const response = await chat("What is the weather in Hayward CA tomorrow?");
+  const rendered = JSON.stringify({
+    answer: response.answer,
+    facts: response.facts,
+    actions: response.actions
+  });
+  assert.notEqual(response.answerType, "needs_followup");
+  assert.match(rendered, /Hayward, CA/);
+  assert.doesNotMatch(rendered, /Los Angeles|map area near/i);
+});
+
 async function chat(message, conversationState = null) {
   const response = await fetch(`${baseUrl}/api/chat`, {
     method: "POST",

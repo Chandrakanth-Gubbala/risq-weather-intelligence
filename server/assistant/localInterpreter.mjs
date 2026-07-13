@@ -28,6 +28,9 @@ const knownLocations = new Map([
   ["phoenix az", "Phoenix, AZ"],
   ["boise", "Boise, ID"],
   ["boise id", "Boise, ID"],
+  ["hayward", "Hayward, CA"],
+  ["hayward ca", "Hayward, CA"],
+  ["hayward california", "Hayward, CA"],
   ["salt lake city", "Salt Lake City, UT"],
   ["salt lake city utah", "Salt Lake City, UT"]
 ]);
@@ -65,6 +68,8 @@ export function localInterpretContextPacket(message, { context = {}, session = n
     const pending = pendingSlotPacket(message, pendingSlot);
     if (pending) return pending;
   }
+  const memoryFollowup = memoryFollowupPacket(message, { context, session });
+  if (memoryFollowup) return memoryFollowup;
   if (isOutOfScope(text)) return packet({ turnType: "out_of_scope", decisionType: "describe_conditions", activity: "out of scope", slotProposals: [] });
 
   const route = extractRoute(message);
@@ -277,6 +282,104 @@ function pendingSlotPacket(message, pendingSlot) {
   return null;
 }
 
+function memoryFollowupPacket(message, { context = {}, session = null } = {}) {
+  const text = cleanText(message);
+  if (!isMemoryFollowup(text)) return null;
+  if (extractRoute(message).length >= 2 || extractLocation(message) || inferScope(message).kind !== "unresolved") return null;
+  const plan = session?.storedPlan && typeof session.storedPlan === "object" ? session.storedPlan : null;
+  const planLocations = Array.isArray(plan?.locations) ? plan.locations.filter((item) => item?.raw && item.raw !== "context") : [];
+  const routeLocations = [
+    planLocations.find((item) => item.role === "origin")?.raw,
+    planLocations.find((item) => item.role === "destination")?.raw
+  ].filter(Boolean);
+  const rememberedLocation = planLocations.find((item) => ["single", "comparison"].includes(item.role))?.raw ?? session?.entities?.locations?.[0]?.label ?? null;
+  const selected = context?.selected;
+  const timeWindow = inferTimeWindow(message);
+  const inheritedTime = timeWindow.kind === "none" ? plannerTimeWindowToPacket(plan?.timeWindow) : timeWindow;
+  if (routeLocations.length >= 2) {
+    return packet({
+      turnType: "refinement",
+      decisionType: "route_assessment",
+      activity: plan?.activity || "route travel",
+      sensitivities: ["rain", "wind", "heat", "alerts"],
+      locations: [loc(routeLocations[0], "origin"), loc(routeLocations[1], "destination")],
+      timeWindow: inheritedTime,
+      evidenceRequests: evidence(["temp_max", "apparent_temp", "precip_sum", "wind_speed", "alerts_active"], "route_points"),
+      externalFactors: ["traffic_conditions", "road_closures"],
+      forbiddenClaims: ["traffic_or_road_status", "official_safety_clearance"],
+      claimLevel: "weather_exposure_risk"
+    });
+  }
+  if (!rememberedLocation && !selected) return null;
+  const activity = plan?.activity || session?.entities?.lastApplication || "weather summary";
+  const lowerActivity = String(activity).toLowerCase();
+  if (/stargaz|sky|stars/.test(lowerActivity)) {
+    return packet({
+      turnType: "refinement",
+      decisionType: "rank_places",
+      activity: "stargazing",
+      sensitivities: ["cloud", "rain", "wind", "alerts"],
+      locations: rememberedLocation ? [loc(rememberedLocation)] : [],
+      scope: rememberedLocation ? scopeObj("explicit_locations") : scopeObj("selected_region"),
+      timeWindow: inheritedTime.kind === "none" ? daypartWindow("tonight") : inheritedTime,
+      evidenceRequests: evidence(["cloud_cover", "precip_sum", "wind_speed", "alerts_active"], rememberedLocation ? "each_location" : "each_candidate", "rank_locations"),
+      externalFactors: ["light_pollution", "moon_phase", "smoke_haze", "astronomical_seeing"],
+      forbiddenClaims: ["dark_sky_guarantee"],
+      claimLevel: "weather_suitability"
+    });
+  }
+  if (/delivery|logistics|last.mile/.test(lowerActivity)) {
+    return packet({
+      turnType: "refinement",
+      decisionType: "go_no_go",
+      activity: /food/.test(lowerActivity) ? "food delivery" : "delivery",
+      sensitivities: ["rain", "wind", "heat", "alerts"],
+      locations: rememberedLocation ? [loc(rememberedLocation)] : [],
+      scope: rememberedLocation ? scopeObj("explicit_locations") : scopeObj("selected_region"),
+      timeWindow: inheritedTime,
+      evidenceRequests: evidence(["hourly_precip", "hourly_wind", "hourly_apparent_temp", "alerts_active"]),
+      externalFactors: ["traffic_conditions", "courier_assignment"],
+      forbiddenClaims: ["eta_or_delay_prediction", "traffic_or_road_status"],
+      slotProposals: inheritedTime.kind === "none" ? ["time_window"] : [],
+      claimLevel: "weather_exposure_risk"
+    });
+  }
+  return packet({
+    turnType: "refinement",
+    decisionType: /outdoor|repair|event|work|concrete/.test(lowerActivity) ? "pick_time_window" : "describe_conditions",
+    activity,
+    sensitivities: ["rain", "wind", "heat", "cold", "alerts"],
+    locations: rememberedLocation ? [loc(rememberedLocation)] : [],
+    scope: rememberedLocation ? scopeObj("explicit_locations") : scopeObj("selected_region"),
+    timeWindow: inheritedTime,
+    evidenceRequests: evidence(["temp_max", "temp_min", "apparent_temp", "precip_sum", "wind_speed", "alerts_active"]),
+    forbiddenClaims: ["official_safety_clearance", "outcome_guarantee"],
+    claimLevel: "weather_suitability"
+  });
+}
+
+function isMemoryFollowup(text) {
+  if (!text) return false;
+  if (/\b(news|recipe|stock|movie|sports|election|politics|code)\b/.test(text)) return false;
+  return (
+    /^(?:what about|how about|and|also)\b/.test(text) ||
+    /\b(?:tomorrow|tonight|morning|afternoon|evening|next week|weekend)\b/.test(text) ||
+    /\b(?:when|best time|start|leave|depart|go)\b/.test(text)
+  );
+}
+
+function plannerTimeWindowToPacket(value) {
+  const raw = String(value?.value ?? "").toLowerCase();
+  if (!raw || raw === "none") return noneWindow();
+  if (raw.includes("tomorrow")) return { kind: "day", dayOffset: 1, days: 1, daypart: null, startHour: null, endHour: null };
+  if (raw.includes("tonight") || raw.includes("evening")) return { kind: "daypart", dayOffset: raw.includes("tomorrow") ? 1 : 0, days: 1, daypart: "evening", startHour: 17, endHour: 22 };
+  if (raw.includes("morning")) return { kind: "daypart", dayOffset: raw.includes("tomorrow") ? 1 : 0, days: 1, daypart: "morning", startHour: 6, endHour: 12 };
+  if (raw.includes("afternoon")) return { kind: "daypart", dayOffset: raw.includes("tomorrow") ? 1 : 0, days: 1, daypart: "afternoon", startHour: 12, endHour: 17 };
+  const days = raw.match(/next_(\d+)d/);
+  if (days) return { kind: "multi_day", dayOffset: 0, days: Math.max(1, Math.min(16, Number(days[1]))), daypart: null, startHour: null, endHour: null };
+  return noneWindow();
+}
+
 function packet(options = {}) {
   const scope = options.scope ?? scopeObj("unresolved");
   return {
@@ -374,7 +477,7 @@ function loc(label, role = "single") {
 
 function extractRoute(message) {
   const source = String(message ?? "").replace(/\s+/g, " ").trim();
-  if (/\b(need|want|going|have|plan|wise|trying|good|ok|okay|safe|whether)\s+to\b/i.test(source) && !/\bfrom\b/i.test(source)) return [];
+  if (/\b(need|want|going|have|plan|wise|trying|good|ok|okay|safe|whether|when|time|best)\s+to\b/i.test(source) && !/\bfrom\b/i.test(source)) return [];
   const match =
     source.match(/\bfrom\s+(.+?)\s+to\s+(.+?)(?:\s+(?:today|tomorrow|tonight|this|next|at|around|by|leaving|leave)\b|[?.!,]|$)/i) ??
     source.match(/\b(.+?)\s+to\s+(.+?)(?:\s+(?:today|tomorrow|tonight|this|next|at|around|by|leaving|leave)\b|[?.!,]|$)/i);
@@ -387,6 +490,7 @@ function extractLocation(message) {
   const direct = knownLocations.get(cleanText(source).replace(/[?.!,]+$/g, ""));
   if (direct) return direct;
   const patterns = [
+    /^([A-Za-z '-]{2,40}\s+(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC))$/i,
     /\b(?:in|near|at|for|around)\s+([A-Za-z '-]+,\s*(?:[A-Za-z]{2}|[A-Za-z '-]+))/i,
     /\b(?:in|near|at|for|around)\s+([A-Za-z '-]{2,40})(?:\s+(?:today|tomorrow|tonight|next|this|around|at|by|for|in)\b|[?.!,]|$)/i,
     /\b(?:house|home|site|property)\s+is\s+in\s+([A-Za-z '-]{2,50})(?:[?.!,]|$)/i
